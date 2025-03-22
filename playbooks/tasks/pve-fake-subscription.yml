@@ -1,0 +1,68 @@
+    # Remove Subscription Nag
+    # From this github https://github.com/Jamesits/pve-fake-subscription
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Ensure jq dependancy is installed
+  ansible.builtin.apt:
+    name: jq
+    state: present
+    update_cache: true
+
+- name: Get installed pve-fake-subscription version
+  ansible.builtin.set_fact:
+    sub_ver: >-
+      {{
+        (ansible_facts.packages['pve-fake-subscription'][0].version
+        if 'pve-fake-subscription' in ansible_facts.packages
+        else 'not_installed')
+        | string
+      }}
+
+
+- name: Debug sub_ver
+  ansible.builtin.debug:
+    msg: "Installed version: {{ sub_ver }}"
+
+- name: Get latest tag from GitHub API
+  ansible.builtin.shell: >
+    set -o pipefail && curl -s "https://api.github.com/repos/Jamesits/pve-fake-subscription/tags" | jq -r '.[0].name'
+  register: latest_tag_raw
+  changed_when: false
+
+- name: Set latest_tag as a clean string
+  ansible.builtin.set_fact:
+    latest_tag: "{{ latest_tag_raw.stdout | trim }}"
+
+- name: Debug the latest tag
+  ansible.builtin.debug:
+    msg: "Latest tag is {{ latest_tag }}"
+
+- name: Set a fact with cleaned version
+  ansible.builtin.set_fact:
+    latest_clean_tag: "{{ latest_tag | regex_replace('^v', '') }}"
+
+- name: Debug latest_clean_tag
+  ansible.builtin.debug:
+    msg: "Latest version: {{ latest_clean_tag }}"
+
+- name: Download the latest release
+  ansible.builtin.get_url:
+    url: https://github.com/Jamesits/pve-fake-subscription/releases/download/{{ latest_tag }}/pve-fake-subscription_{{ latest_clean_tag }}+git-1_all.deb
+    dest: /tmp/pve-fake-subscription_{{ latest_clean_tag }}+git-1_all.deb
+    owner: root
+    group: root
+    mode: '0644'
+  when: "latest_clean_tag not in sub_ver"
+
+- name: Install the .deb package
+  ansible.builtin.apt:
+    deb: /tmp/pve-fake-subscription_{{ latest_clean_tag }}+git-1_all.deb
+  when: "latest_clean_tag not in sub_ver"
+
+- name: Add entry to /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "127.0.0.1 shop.maurer-it.com"
+    state: present

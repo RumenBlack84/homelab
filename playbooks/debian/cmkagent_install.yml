@@ -1,0 +1,39 @@
+---
+- name: Ensure Checkmk Agent is Installed
+  hosts: all
+  become: true
+  vars:
+    ansible_ssh_pipelining: true
+  vars_files:
+    - vars/cmkvault.yaml
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: apt
+    - name: Copy agent file
+      ansible.builtin.copy:
+        src: files/check-mk-agent_2.3.0p9-1_all.deb  # Ansible automatically looks inside the role's files/
+        dest: /tmp/check-mk-agent_2.3.0p9-1_all.deb
+        owner: root
+        group: root
+        mode: '0644'
+      when: "'check_mk_agent' not in ansible_facts.packages"
+
+    - name: Install the .deb package using apt
+      ansible.builtin.apt:
+        state: present
+        deb: /tmp/check-mk-agent_2.3.0p9-1_all.deb
+      when: "'check_mk_agent' not in ansible_facts.packages"
+    - name: Register CMK agent
+      ansible.builtin.shell: >
+        cmk-agent-ctl register
+        --hostname {{ ansible_hostname }}
+        --server 192.168.0.68
+        --site monitoring
+        --user cmkadmin
+        --password '{{ cmk_password }}'
+      args:
+        executable: /bin/bash
+      no_log: true
+      when: "'check_mk_agent' not in ansible_facts.packages"
+      changed_when: false

@@ -1,0 +1,42 @@
+---
+- name: Deplopy and/or Update tdarr
+  hosts: tdarr
+  serial: 1  # ✅ Runs all tasks for one host before moving to the next
+  gather_facts: false
+  remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
+  become: true
+  vars_files:
+    - vault/vault.yml
+  vars:
+    ansible_shell_executable: /bin/bash  # Use bash as the default shell
+    ansible_ssh_pipelining: true
+    tdarr_server_ip: 192.168.0.80
+    updater_link: "https://storage.tdarr.io/versions/2.17.01/linux_x64/Tdarr_Updater.zip"
+  tasks:
+    - name: Debug Ostype value
+      ansible.builtin.debug:
+        msg: "Ostype is: {{ hostvars[inventory_hostname].ostype | default(none) }}"
+
+    - name: Run deploy-proxmox-container to ensure the required LXC exists
+      ansible.builtin.include_role:
+        name: deploy-proxmox-container
+      when: (hostvars[inventory_hostname].lxc | default(false) | bool)
+
+    - name: Run the arch-update role to update and prep arch based systems
+      ansible.builtin.include_role:
+        name: oh-my-posh-arch
+      when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
+    - name: Run the oh my posh role for apt systems so we can have a pretty cli
+      ansible.builtin.include_role:
+        name: oh-my-posh-apt
+      when: (hostvars[inventory_hostname].ostype | default('')) in ["ubuntu", "debian"]
+
+    - name: Run the oh my posh role for arch systems so we can have a pretty cli
+      ansible.builtin.include_role:
+        name: oh-my-posh-arch
+      when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
+    - name: Install tdarr
+      ansible.builtin.include_role:
+        name: tdarr-config

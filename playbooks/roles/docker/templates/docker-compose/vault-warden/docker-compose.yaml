@@ -1,0 +1,13 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    environment:
+      - UMASK=000
+      - TZ=America/Toronto
+      - DOMAIN=https://bitwarden.grant.onl
+    volumes:
+      - /appdata/vault-warden_data:/data
+    ports:
+      - 4743:80
+    restart: unless-stopped

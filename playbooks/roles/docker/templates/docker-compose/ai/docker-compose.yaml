@@ -1,0 +1,176 @@
+services:
+# ensure network ai-stack exists before running with 
+# docker network create ai-stack
+# inspired by https://techno-tim.github.io/posts/ai-stack-tutorial 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - OLLAMA_KEEP_ALIVE=2h
+      - ENABLE_IMAGE_GENERATION=True
+      - COMFYUI_BASE_URL=http://stable-diffusion-webui:7860
+    networks:
+      - ai-stack
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./ollama:/root/.ollama
+    ports:
+      - "11434:11434" # Add this line to expose the port
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: open-webui
+    restart: unless-stopped
+    networks:
+      - ai-stack
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - 'OLLAMA_BASE_URL=http://ollama:11434'
+      - ENABLE_RAG_WEB_SEARCH=True
+      - RAG_WEB_SEARCH_ENGINE=searxng
+      - RAG_WEB_SEARCH_RESULT_COUNT=3
+      - RAG_WEB_SEARCH_CONCURRENT_REQUESTS=10
+      - SEARXNG_QUERY_URL=http://searxng:8080/search?q=<query>
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./open-webui:/app/backend/data
+    depends_on:
+      - ollama
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - "8080:8080" # Add this line to expose the port
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    networks:
+      - ai-stack
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./searxng:/etc/searxng
+    depends_on:
+      - ollama
+      - open-webui
+    restart: unless-stopped
+    ports:
+      - "8081:8080" # Add this line to expose the port
+
+  stable-diffusion-download:
+    build: ./stable-diffusion-webui-docker/services/download/
+    image: comfy-download
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./stable-diffusion-webui-docker/data:/data
+
+  stable-diffusion-webui:
+    build: ./stable-diffusion-webui-docker/services/comfy/
+    image: comfy-ui
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - CLI_ARGS=
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./stable-diffusion-webui-docker/data:/data
+      - ./stable-diffusion-webui-docker/output:/output
+    stop_signal: SIGKILL
+    tty: true
+    restart: unless-stopped
+    networks:
+      - ai-stack
+    ports:
+      - "7860:7860" # Add this line to expose the port
+
+  mongo:
+    image: mongo
+    env_file:
+      - .env
+    networks:
+      - ai-stack
+    restart: unless-stopped
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./whisper/db_data:/data/db
+      - ./whisper/db_data/logs/:/var/log/mongodb/
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - MONGO_INITDB_ROOT_USERNAME=${DB_USER:-whishper}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASS:-whishper}
+    command: ['--logpath', '/var/log/mongodb/mongod.log']
+    ports:
+      - "27017:27017" # Add this line to expose the port
+
+  translate:
+    container_name: whisper-libretranslate
+    image: libretranslate/libretranslate:latest-cuda
+    env_file:
+      - .env
+    networks:
+      - ai-stack
+    restart: unless-stopped
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./whisper/libretranslate/data:/home/libretranslate/.local/share
+      - ./whisper/libretranslate/cache:/home/libretranslate/.local/cache
+    user: root
+    tty: true
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - LT_DISABLE_WEB_UI=True
+      - LT_LOAD_ONLY=${LT_LOAD_ONLY:-en,fr,es}
+      - LT_UPDATE_MODELS=True
+    ports:
+      - "5000:5000" # Add this line to expose the port
+
+  whisper:
+    container_name: whisper
+    pull_policy: always
+    image: pluja/whishper:latest-gpu
+    env_file:
+      - .env
+    networks:
+      - ai-stack
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./whisper/uploads:/app/uploads
+      - ./whisper/logs:/var/log/whishper
+      - ./whisper/models:/app/models
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - translate
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - PUBLIC_INTERNAL_API_HOST=${WHISHPER_HOST}
+      - PUBLIC_TRANSLATION_API_HOST=${WHISHPER_HOST}
+      - PUBLIC_API_HOST=${WHISHPER_HOST:-}
+      - PUBLIC_WHISHPER_PROFILE=gpu
+      - WHISPER_MODELS_DIR=/app/models
+      - UPLOAD_DIR=/app/uploads
+    ports:
+      - "8000:80" # Add this line to expose the port
+
+networks:
+  ai-stack:
+    external: true

@@ -1,0 +1,32 @@
+#cloud-config
+# all variables are to be populated by ansible, if using manually populate it yourself.
+hostname: {{ ci_hostname }}
+manage_etc_hosts: true
+fqdn: {{ ci_fqdn }}
+packages:
+  - sudo
+  - curl
+  - vim
+  - git
+  - fontconfig
+  - nano
+  - cifs-utils
+  - nfs-common
+  - qemu-guest-agent
+  - nala
+  - net-tools
+  - htop
+  - openssh-server
+  - unzip
+ssh_pwauth: false
+users:
+  - default
+  - name: {{ cloudinit.ci_username }}
+    sudo: ALL=(ALL) NOPASSWD:ALL # Remove if passwordless sudo is not desired
+    groups: sudo # Fallback for password sudo
+    ssh_authorized_keys:
+      - {{ cloudinit.ci_ssh_key }}
+    password: {{ cloudinit.ci_password }}
+    shell: /bin/bash
+  
+package_upgrade: true

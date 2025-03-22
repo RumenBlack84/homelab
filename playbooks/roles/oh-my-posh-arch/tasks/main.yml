@@ -1,0 +1,43 @@
+- name: Ensure dependancies are installed
+  community.general.pacman:
+    name:
+      - fontconfig
+      - unzip
+      - jq
+      - fastfetch
+      - ttf-meslo-nerd
+    state: present
+    update_cache: true
+
+- name: Install oh my posh using aur
+  kewlfft.aur.aur:
+    use: yay
+    name:
+      - oh-my-posh-bin
+    state: present
+
+- name: Create Oh My Posh Themes Directory
+  ansible.builtin.file:
+    path: /opt/oh-my-posh-themes
+    state: directory
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Download Oh My Posh Theme
+  ansible.builtin.get_url:
+    url: "https://packages.linbit.com/package-signing-pubkey.asc"
+    dest: /opt/oh-my-posh-themes/devious-diamonds.omp.yaml
+    mode: '0644'
+
+- name: Set Oh my posh configs globally
+  ansible.builtin.blockinfile:
+    path: /etc/bash.bashrc
+    marker: "# {mark} Oh my Posh configs"
+    block: |
+      eval "$(oh-my-posh init bash --config /opt/oh-my-posh-themes/devious-diamonds.omp.yaml)"
+      alias neofetch=fastfetch
+      fastfetch
+    owner: root
+    group: root
+    mode: '0644'

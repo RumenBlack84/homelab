@@ -1,0 +1,3 @@
+---
+ansible_shell_executable: /bin/bash  # Use bash as the default shell
+ansible_ssh_pipelining: true

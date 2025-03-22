@@ -1,0 +1,16 @@
+---
+- name: Sync linstor configs between hosts in the cluster
+  hosts: all
+  become: true
+  tasks:
+    - name: Download linstor-client.conf
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/RumenBlack84/ansible/main/linstor-configs/linstor-client.conf"
+        dest: /etc/linstor/linstor-client.conf
+        mode: '0755'
+
+    - name: Download linstor_db.toml
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/RumenBlack84/ansible/main/linstor-configs/linstor_db.toml"
+        dest: /etc/drbd-reactor.d/linstor_db.toml
+        mode: '0755'

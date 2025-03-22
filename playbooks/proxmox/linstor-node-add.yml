@@ -1,0 +1,298 @@
+---
+- name: Run all the required tasks to add a new node to linstor
+  hosts: all
+  become: true
+  tasks:
+# Installing linstor public repos as per the following documentation
+# https://github.com/LINBIT/linstor-gateway/tree/master
+# https://github.com/LINBIT/linstor-gateway/issues/28
+# https://linbit.com/blog/linstor-setup-proxmox-ve-volumes/
+# https://linbit.com/drbd-user-guide/linstor-guide-1_0-en/#s-proxmox-ls-install
+# https://linbit.com/drbd-user-guide/linstor-guide-1_0-en/#ch-linstor-gateway
+# https://linbit.com/drbd-user-guide/linstor-guide-1_0-en/#s-linstor_ha
+    - name: Download Linstor Public Repo Key
+      ansible.builtin.get_url:
+        url: "https://packages.linbit.com/package-signing-pubkey.asc"
+        dest: /tmp/package-signing-pubkey.asc
+        mode: '0755'
+    - name: Import Linstor Repo key
+      environment:
+        TERM: xterm
+      ansible.builtin.command: "gpg --yes -o /etc/apt/trusted.gpg.d/linbit-keyring.gpg --dearmor /tmp/package-signing-pubkey.asc"
+      args:
+        creates: /etc/apt/trusted.gpg.d/linbit-keyring.gpg
+    - name: Overwrite linbit.list with LINBIT repository entry
+      ansible.builtin.copy:
+        content: |
+          deb [signed-by=/etc/apt/trusted.gpg.d/linbit-keyring.gpg] http://packages.linbit.com/public/ proxmox-8 drbd-9
+        dest: /etc/apt/sources.list.d/linbit.list
+        owner: root
+        group: root
+        mode: '0644'
+
+# Create mount service for linstor database in case this node ever become active
+# As per https://linbit.com/drbd-user-guide/linstor-guide-1_0-en/#s-linstor_ha
+    - name: Create var-lib-linstor.mount file
+      ansible.builtin.copy:
+        content: |
+          [Unit]
+          Description=Filesystem for the LINSTOR controller
+
+          [Mount]
+          # you can use the minor like /dev/drbdX or the udev symlink
+          What=/dev/drbd/by-res/linstor_db/0
+          Where=/var/lib/linstor
+        dest: /etc/systemd/system/var-lib-linstor.mount
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Create /var/lib/linstor directory
+      ansible.builtin.file:
+        path: /var/lib/linstor
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Get current attributes of /var/lib/linstor
+      ansible.builtin.command: lsattr /var/lib/linstor
+      register: linstor_attrs
+      changed_when: linstor_attrs.rc != 0
+    - name: Set immutable attribute on /var/lib/linstor
+      ansible.builtin.command: chattr +i /var/lib/linstor
+      when: "'i' not in linstor_attrs.stdout"
+      changed_when: true
+# Create required directories and pull down configuration files from github
+    - name: Create /etc/linstor directory
+      ansible.builtin.file:
+        path: /etc/linstor
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Create /etc/drbd-reactor.d directory
+      ansible.builtin.file:
+        path: /etc/drbd-reactor.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Create /etc/systemd/system/linstor-satellite.service.d/ directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/linstor-satellite.service.d/
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Download linstor-client.conf
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/RumenBlack84/ansible/main/linstor-configs/linstor-client.conf"
+        dest: /etc/linstor/linstor-client.conf
+        mode: '0755'
+    - name: Download linstor_db.toml
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/RumenBlack84/ansible/main/linstor-configs/linstor_db.toml"
+        dest: /etc/drbd-reactor.d/linstor_db.toml
+        mode: '0755'
+    - name: Download override.conf
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/RumenBlack84/ansible/main/linstor-configs/override.conf"
+        dest: /etc/systemd/system/linstor-satellite.service.d/override.conf
+        mode: '0755'
+    - name: Download linstor-gateway-nfs-nfs.toml
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/RumenBlack84/ansible/main/linstor-configs/linstor-gateway-nfs-nfs.toml"
+        dest: /etc/drbd-reactor.d/linstor-gateway-nfs-nfs.toml
+        mode: '0755'
+    - name: Download linstor_sattelite.toml
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/RumenBlack84/ansible/main/linstor-configs/linstor_satellite.toml"
+        dest: /etc/linstor/linstor_satellite.toml
+        mode: '0755'
+
+    - name: Download linstor-gateway.service
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/RumenBlack84/ansible/main/linstor-configs/linstor-gateway.service"
+        dest: /etc/systemd/system/linstor-gateway.service
+        mode: '0755'
+    - name: Install required LINSTOR and related packages
+      ansible.builtin.apt:
+        name:
+          - drbd-dkms
+          - drbd-utils
+          - linstor-controller
+          - linstor-satellite
+          - linstor-client
+          - linstor-proxmox
+          - drbd-reactor
+          - targetcli-fb
+          - nfs-common
+          - nfs-kernel-server
+          - resource-agents
+          - git
+          - golang
+          - linstor-gui
+          - jq
+        state: present
+        update_cache: true
+
+# Work around for current debian issue with resource agents
+# This is currently causing an issue with iptables rules not being removed when drbd-reactors are changing hosts:
+# This was causing the VIP to fail for the DB config (192.168.0.9) in my case as the rules got left in place
+# Relevant issue https://github.com/LINBIT/linstor-gateway/issues/28
+# This section can be removed when this issue is resolved
+    - name: Clone the resource-agents repository
+      ansible.builtin.git:
+        repo: 'https://github.com/ClusterLabs/resource-agents.git'
+        version: main
+        dest: /tmp/resource-agents
+    - name: Copy portblock script to /usr/lib/ocf/resource.d/heartbeat
+      ansible.builtin.copy:
+        src: /tmp/resource-agents/heartbeat/portblock
+        dest: /usr/lib/ocf/resource.d/heartbeat/portblock
+        remote_src: true
+        mode: '0755'
+    - name: Ensure the portblock script is executable
+      ansible.builtin.file:
+        path: /usr/lib/ocf/resource.d/heartbeat/portblock
+        mode: '0755'
+        state: file
+# End of workaround section
+
+# install linstor gateway
+    - name: Clone the repository
+      ansible.builtin.git:
+        repo: 'https://github.com/LINBIT/linstor-gateway'
+        version: main
+        dest: /tmp/linstor-gateway
+    - name: Get the latest version tag from the repository
+      ansible.builtin.shell: |
+        cd /tmp/linstor-gateway
+        git fetch --tags
+        git describe --tags `git rev-list --tags --max-count=1`
+      register: latest_version_raw
+      changed_when: latest_version_raw.rc != 0
+    - name: Normalize the latest version
+      ansible.builtin.set_fact:
+        latest_version: "{{ latest_version_raw.stdout | regex_replace('^v', '') }}"
+    - name: Check if linstor-gateway binary exists
+      ansible.builtin.stat:
+        path: /usr/sbin/linstor-gateway
+      register: linstor_gateway_stat
+    - name: Get installed linstor-gateway version
+      ansible.builtin.command: "/usr/sbin/linstor-gateway -v"
+      register: installed_version_raw
+      changed_when: installed_version_raw.rc != 0
+      when: linstor_gateway_stat.stat.exists
+    - name: Normalize installed version
+      ansible.builtin.set_fact:
+        installed_version: "{{ installed_version_raw.stdout | regex_search('linstor-gateway version ([0-9.]+)', '\\1') }}"
+      when: linstor_gateway_stat.stat.exists
+    - name: Set installed version to empty if binary does not exist
+      ansible.builtin.set_fact:
+        installed_version: ""
+      when: not linstor_gateway_stat.stat.exists
+    - name: Build the linstor-gateway package
+      ansible.builtin.shell: |
+        cd /tmp/linstor-gateway
+        make
+      args:
+        chdir: /tmp/linstor-gateway
+      changed_when: installed_version != latest_version
+      when: installed_version != latest_version
+    - name: Move the binary to /usr/sbin
+      ansible.builtin.copy:
+        src: /tmp/linstor-gateway/linstor-gateway
+        dest: /usr/sbin/linstor-gateway
+        remote_src: true
+        mode: '0755'
+    - name: Verify the binary is built and in /usr/sbin
+      ansible.builtin.stat:
+        path: /usr/sbin/linstor-gateway
+      register: linstor_gateway_stat
+
+    - name: Debug output of binary existence
+      ansible.builtin.debug:
+        msg: "linstor-gateway binary exists at /usr/sbin/linstor-gateway: {{ linstor_gateway_stat.stat.exists }}"
+
+# Enable and start required systemd services
+
+    - name: Enable and start linstor-satellite service
+      ansible.builtin.systemd:
+        daemon_reload: true
+        name: linstor-satellite
+        enabled: true
+        state: started
+    - name: Restart linstor-satellite service just in case it was already started
+      ansible.builtin.systemd:
+        name: linstor-satellite
+        state: restarted
+    - name: Ensure nfs-server is disabled and stopped. It will be managed by our drbd-reactor configs
+      ansible.builtin.systemd:
+        name: nfs-server
+        enabled: false
+        state: stopped
+    - name: Enable and start drbd-reactor service
+      ansible.builtin.systemd:
+        name: drbd-reactor
+        enabled: true
+        state: started
+    - name: Disable and stop linstor-gateway service it will be managed by drbd-reactor
+      ansible.builtin.systemd:
+        name: linstor-gateway
+        enabled: false
+        state: stopped
+# Enable the services that will auto reload drbd-reactor when things get changed
+    - name: Copy drbd-reactor-reload.path to /etc/systemd/system/
+      ansible.builtin.copy:
+        src: /usr/share/doc/drbd-reactor/examples/drbd-reactor-reload.path
+        dest: /etc/systemd/system/drbd-reactor-reload.path
+        remote_src: true
+        mode: '0644'
+    - name: Copy drbd-reactor-reload.service to /etc/systemd/system/
+      ansible.builtin.copy:
+        src: /usr/share/doc/drbd-reactor/examples/drbd-reactor-reload.service
+        dest: /etc/systemd/system/drbd-reactor-reload.service
+        remote_src: true
+        mode: '0644'
+    - name: Enable and start drbd-reactor-reload.path
+      ansible.builtin.systemd:
+        name: drbd-reactor-reload.path
+        enabled: true
+        state: started
+# Restart proxmox services in order to have our drbd storages appear
+    - name: Restart Proxmox services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - pve-cluster
+        - pvedaemon
+        - pvestatd
+        - pveproxy
+        - pve-ha-lrm
+
+    - name: Get the hostname
+      ansible.builtin.command: hostname
+      register: hostname_output
+      changed_when: hostname_output.rc != 0
+
+    - name: Debug the hostname
+      ansible.builtin.debug:
+        msg: "The hostname of the remote host is: {{ hostname_output.stdout }}"
+
+    - name: Get the IP address of vmbr0
+      ansible.builtin.shell: set -o pipefail && ip -4 addr show vmbr0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+      register: ip_output
+      changed_when: ip_output.rc != 0
+
+    - name: Debug the IP address of vmbr0
+      ansible.builtin.debug:
+        msg: "The IP address of vmbr0 on the remote host is: {{ ip_output.stdout }}"
+
+    - name: Further Manual Action required
+      ansible.builtin.debug:
+        msg: |
+          The node will need to be manually added to the linstor cluster.
+          Log onto the VIP (pve - 192.168.0.9) which will be running the controller.
+          From there run the following command:
+          linstor node create {{ hostname_output.stdout }} {{ ip_output.stdout }}

@@ -1,0 +1,54 @@
+---
+- name: Check if Intel iGPU is present
+  ansible.builtin.shell: set -o pipefail && lspci | grep -iq 'vga.*intel'
+  register: igpu_check
+  ignore_errors: true  # If there's no Intel iGPU, the grep command will fail
+  changed_when: false
+
+- name: Fail if no Intel iGPU is detected
+  ansible.builtin.fail:
+    msg: "No Intel iGPU detected."
+  when: igpu_check.rc != 0
+
+- name: Extract CPU model name
+  ansible.builtin.shell: set -o pipefail && lscpu | grep -m 1 'Model name:'
+  register: cpu_model_name
+  changed_when: false
+
+- name: Extract CPU model number
+  ansible.builtin.set_fact:
+    cpu_model_number: "{{ cpu_model_name.stdout | regex_search('(?<=i[3579]-)\\d{4,5}') }}"
+  when: cpu_model_name.stdout is defined
+
+- name: Fail if CPU model number cannot be extracted
+  ansible.builtin.fail:
+    msg: "Failed to extract CPU model number."
+  when: cpu_model_number is undefined
+
+- name: Determine if the system supports SR-IOV, GVT-g, or Legacy support
+  ansible.builtin.set_fact:
+    virtualization_support: >-
+      {% if cpu_model_number | int > 11999 %}
+        SR-IOV
+      {% elif cpu_model_number | int >= 5000 and cpu_model_number | int <= 11999 %}
+        GVT-g
+      {% else %}
+        Legacy support
+      {% endif %}
+
+- name: Trim whitespace from virtualization_support
+  ansible.builtin.set_fact:
+    virtualization_support: "{{ virtualization_support | trim }}"
+
+- name: Display virtualization support
+  ansible.builtin.debug:
+    msg: >-
+      {% if virtualization_support == "Legacy support" %}
+        This systems igpu doesn't support any advanced GPU Virtualization as it is older then Broadwell (5th gen intel).
+      {% else %}
+        The system likely supports {{ virtualization_support }} (Intel GPU Virtualization).
+      {% endif %}
+
+- name: Include SR-IOV tasks if the system supports SR-IOV
+  ansible.builtin.include_tasks: tasks_intel_igpu_sriov.yml
+  when: virtualization_support == "SR-IOV"

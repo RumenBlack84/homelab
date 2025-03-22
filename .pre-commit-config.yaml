@@ -1,0 +1,17 @@
+repos:
+  - repo: local
+    hooks:
+      - id: check-ansible-vault
+        name: Check Ansible Vault Encryption
+        entry: >
+          bash -c '
+          for file in "$@"; do
+            if ! head -n 1 "$file" | grep -q "ANSIBLE_VAULT"; then
+              echo "Vault file not encrypted: $file";
+              exit 1;
+            fi;
+          done' -- 
+        language: system
+        types: [file]
+        files: ".*vault\\.yml$"
+        pass_filenames: true

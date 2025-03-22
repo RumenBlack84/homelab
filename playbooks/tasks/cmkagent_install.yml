@@ -1,0 +1,105 @@
+---
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Get Checkmk API version
+  ansible.builtin.uri:
+    url: "https://checkmk.grant.onl/monitoring/check_mk/api/1.0/version"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ checkmk.cmk_user }} {{ checkmk.cmk_password }}"
+      Accept: "application/json"
+    return_content: true
+    status_code: 200
+  register: checkmk_api_response
+  ignore_errors: true  # Optional: Prevents playbook failure on API errors
+
+- name: Extract Checkmk version
+  ansible.builtin.set_fact:
+    checkmk_version: "{{ checkmk_api_response.json.versions.checkmk }}"
+
+- name: Debug extracted Checkmk version
+  ansible.builtin.debug:
+    msg: "Checkmk Version: {{ checkmk_version }}"
+
+- name: Get installed Checkmk agent version
+  ansible.builtin.set_fact:
+    checkmk_installed_version: "{{ ansible_facts.packages['check-mk-agent'][0].version if 'check-mk-agent' in ansible_facts.packages else 'not_installed' }}"
+
+- name: Debug installed version
+  ansible.builtin.debug:
+    msg: "Checkmk Agent installed version: {{ checkmk_installed_version }}"
+
+- name: Determine if Checkmk agent needs installation or update
+  ansible.builtin.set_fact:
+    checkmk_update_required: "{{ checkmk_installed_version == 'not_installed' or checkmk_installed_version != checkmk_target_version }}"
+
+- name: Debug update status
+  ansible.builtin.debug:
+    msg: "Update required: {{ checkmk_update_required }}"
+  when: checkmk_update_required | default(true) | bool
+
+- name: Get list of available Checkmk agent files
+  ansible.builtin.uri:
+    url: https://checkmk.grant.onl/monitoring/check_mk/agents/
+    return_content: true
+  register: checkmk_agent_page
+  changed_when: false
+
+- name: Extract the correct Checkmk agent filename
+  ansible.builtin.set_fact:
+    checkmk_agent_filename: "{{ checkmk_agent_page.content | regex_search('check-mk-agent_' + checkmk_version + '-\\d+_all.deb') }}"
+
+- name: Debug extracted Checkmk agent filename
+  ansible.builtin.debug:
+    msg: "Found agent file: {{ checkmk_agent_filename }}"
+
+- name: Install the Checkmk agent package using apt
+  ansible.builtin.apt:
+    state: present
+    deb: "/tmp/{{ checkmk_agent_filename }}"
+  when: checkmk_update_required | default(true) | bool
+
+- name: Ensure host exists before registering
+  ansible.builtin.uri:
+    url: "https://checkmk.grant.onl/monitoring/check_mk/api/1.0/domain-types/host_config/collections/all"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ checkmk.cmk_user }} {{ checkmk.cmk_password }}"
+      Accept: "application/json"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      attributes:
+        ipaddress: "{{ ansible_host }}"
+      folder: "{{ cmk_folder }}"
+      host_name: "{{ ansible_hostname }}"
+    return_content: true
+    status_code: [200, 201]
+  register: checkmk_api_response
+  ignore_errors: true  # Optional, prevents playbook failure if API call fails
+  when: checkmk_update_required | default(true) | bool
+
+- name: Debug API Response
+  ansible.builtin.debug:
+    msg: "API Response: {{ checkmk_api_response.json }}"
+    return_content: true
+    status_code: 200
+  register: checkmk_api_response
+  ignore_errors: true  # Optional: Prevents playbook failure on API errors
+  when: checkmk_update_required | default(true) | bool
+
+- name: Register CMK agent
+  ansible.builtin.shell: >
+    cmk-agent-ctl register
+    --hostname {{ ansible_hostname }}
+    --server 192.168.0.68
+    --site monitoring
+    --user '{{ checkmk.cmk_user }}'
+    --password '{{ checkmk.cmk_password }}'
+  args:
+    executable: /bin/bash
+  no_log: true
+  when: checkmk_update_required | default(true) | bool
+  changed_when: false

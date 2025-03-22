@@ -1,0 +1,191 @@
+---
+# Debian or Ubuntu, apt based.
+- name: Save hostvars as shorter vars to prevent line too long errors later on
+  ansible.builtin.set_fact:
+    bridge: "{{ hostvars[inventory_hostname].interface }}"
+    subnet: "{{ hostvars[inventory_hostname].subnet }}"
+    ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    gw: "{{ hostvars[inventory_hostname].gateway }}"
+
+- name: Ensure template is up to date and has the proper bind mount
+  delegate_to: localhost
+  community.general.proxmox:
+    node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    pubkey: "{{ ssh.pub_key }}"
+    hostname: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+    update: true
+    ostype: "{{ hostvars[inventory_hostname].ostype | default('auto') }}"
+    cpuunits: "{{ hostvars[inventory_hostname].cpuunits | default(100) | int }}"
+    memory: "{{ hostvars[inventory_hostname].memory }}"
+    onboot: "{{ hostvars[inventory_hostname].onboot | default(false) | bool }}"
+    mount_volumes:
+      - id: "mp0"
+        host_path: "/mnt/pve/BulkPoolShared"
+        mountpoint: "/mnt/shared"
+    features:
+      - nesting=1
+      - keyctl=1
+    netif:
+      net0: "name=eth0,gw={{ gw }},ip={{ ip }}{{ subnet }},bridge={{ bridge }}"
+    timeout: 240
+    tags: "{{ hostvars[inventory_hostname].tags }}"
+  when:
+    - (hostvars[inventory_hostname].lxc | default(false) | bool)
+
+- name: Ensure container is started
+  delegate_to: localhost
+  community.general.proxmox:
+    hostname: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    timeout: 120
+    state: started
+  ignore_errors: true
+  register: ignore_errors_register
+  # I don't care if the start command fails because its going to fail when already started
+
+- name: Debug container start in case we care about the errors
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "Container Start Output: {{ ignore_errors_register }}"
+
+- name: Install required packages if apt based
+  ansible.builtin.apt:
+    name:
+      - jq
+      - mkvtoolnix
+      - libtesseract-dev
+      - handbrake-cli
+      - unzip
+      - curl
+    state: present
+    update_cache: true
+  when: (hostvars[inventory_hostname].ostype | default('')) in ["ubuntu", "debian"]
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+    autoremove: true
+  when: (hostvars[inventory_hostname].ostype | default('')) in ["ubuntu", "debian"]
+
+# Arch BTW
+- name: Install the rest of the packages for Arch
+  community.general.pacman:
+    name:
+      - jq
+      - mkvtoolnix-cli
+      - tesseract
+      - handbrake-cli
+      - unzip
+      - curl
+    state: present
+    update_cache: true
+  when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
+- name: Ensure all packages are up to date
+  community.general.pacman:
+    upgrade: true
+  when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
+- name: Download The Tdarr updater
+  ansible.builtin.get_url:
+    url: "{{ updater_link }}"
+    dest: /tmp/Tdarr_updater.zip
+    mode: '0770'
+
+- name: Ensure tdarr directory exists with proper permissions
+  ansible.builtin.file:
+    path: /opt/Tdarr
+    state: directory
+    owner: root
+    group: root
+    mode: '0774'
+
+- name: Ensure tdarr config directory exists with proper permissions
+  ansible.builtin.file:
+    path: /opt/Tdarr/configs
+    state: directory
+    owner: root
+    group: root
+    mode: '0774'
+
+- name: Create Tdarr node config if node flag is true
+  ansible.builtin.template:
+    src: tdarr-configs/Tdarr_Node_Config.json.j2
+    dest: /opt/Tdarr/configs/Tdarr_Node_Config.json
+    owner: root
+    group: root
+    mode: '0774'
+  when: tdarr_node | default(false)
+
+- name: Create Tdarr server config if node flag is true
+  ansible.builtin.template:
+    src: tdarr-configs/Tdarr_Server_Config.json.j2
+    dest: /opt/Tdarr/configs/Tdarr_Server_Config.json
+    owner: root
+    group: root
+    mode: '0770'
+  when: tdarr_server | default(false)
+
+- name: Create Tdarr Updater config
+  ansible.builtin.template:
+    src: tdarr-configs/Tdarr_Updater_Config.json.j2
+    dest: /opt/Tdarr/configs/Tdarr_Updater_Config.json
+    owner: root
+    group: root
+    mode: '0770'
+
+- name: Extract Tdarr updater
+  ansible.builtin.unarchive:
+    src: /tmp/Tdarr_updater.zip
+    dest: /opt/Tdarr
+    remote_src: true
+
+- name: Set permissions on extracted files
+  ansible.builtin.file:
+    path: /opt/Tdarr
+    owner: root
+    group: root
+    mode: '0770'
+    recurse: true
+
+- name: Execute updater as tdarr user
+  ansible.builtin.command: /opt/Tdarr/Tdarr_Updater
+  become: true
+  become_user: tdarr
+  changed_when: false # script will take care of checking to see if there's a new version
+
+- name: Copy tdarr-node service to hosts with node flag set
+  ansible.builtin.copy:
+    src: tdarr-configs/tdarr-node.service.j2
+    dest: /etc/systemd/system/tdarr-node.service
+    mode: '0774'
+  when: tdarr_node | default(false)
+
+- name: Copy tdarr-server service to hosts with node flag set
+  ansible.builtin.copy:
+    src: tdarr-configs/tdarr-server.service.j2
+    dest: /etc/systemd/system/tdarr-server.service
+    mode: '0774'
+  when: tdarr_server | default(false)
+
+- name: Enable and start tdarr-node service for nodes with flag set
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: tdarr-node
+    enabled: true
+    state: started
+  when: tdarr_node | default(false)
+
+- name: Enable and start tdarr-server service for nodes with flag set
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: tdarr-server
+    enabled: true
+    state: started
+  when: tdarr_server | default(false)

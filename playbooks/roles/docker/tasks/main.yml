@@ -1,0 +1,78 @@
+---
+- name: Ensure directory for keyrings exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Download Docker Repo key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+
+- name: Add Docker repository to sources list
+  ansible.builtin.copy:
+    content: >
+      deb [arch=amd64
+      signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/ubuntu
+      {{ ansible_lsb.codename }} stable
+    dest: /etc/apt/sources.list.d/docker.list
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+      - apt-transport-https
+      - curl
+      - ca-certificates
+    state: present
+    update_cache: true
+
+- name: Add user to the docker group
+  ansible.builtin.user:
+    name: "{{ hostvars[inventory_hostname].ansible_user }}"
+    groups: docker
+    append: true
+
+- name: Ensure the docker-compose directories exists
+  ansible.builtin.file:
+    path: "/home/{{ hostvars[inventory_hostname].ansible_user }}/docker-compose/{{ item.key }}"
+    state: directory
+    owner: "{{ hostvars[inventory_hostname].ansible_user }}"
+    group: "{{ hostvars[inventory_hostname].ansible_user }}"
+    mode: '0700'
+  loop: "{{ hostvars[inventory_hostname].docker_stacks | dict2items }}"
+  when: item.value  # Only process stacks that are `true`
+
+- name: Generate Docker Compose file for each stack
+  ansible.builtin.template:
+    src: "docker-compose/{{ item.key }}/docker-compose.yml"
+    dest: "/home/{{ hostvars[inventory_hostname].ansible_user }}/docker-compose/{{ item.key }}/docker-compose.yml"
+    owner: "{{ hostvars[inventory_hostname].ansible_user }}"
+    group: "{{ hostvars[inventory_hostname].ansible_user }}"
+    mode: "0600"
+  loop: "{{ hostvars[inventory_hostname].docker_stacks | dict2items }}"
+  when: item.value  # Only process stacks that are `true`
+
+- name: Stop the docker stacks with Docker Compose v2
+  community.docker.docker_compose_v2:
+    project_src: "/home/{{ hostvars[inventory_hostname].ansible_user }}/docker-compose/{{ item.key }}"
+    state: absent
+  loop: "{{ hostvars[inventory_hostname].docker_stacks | dict2items }}"
+  when: item.value  # Only process stacks that are `true`
+
+- name: Start docker stacks with Docker Compose v2
+  community.docker.docker_compose_v2:
+    project_src: "/home/{{ hostvars[inventory_hostname].ansible_user }}/docker-compose/{{ item.key }}"
+    state: present
+  loop: "{{ hostvars[inventory_hostname].docker_stacks | dict2items }}"
+  when: item.value  # Only process stacks that are `true`

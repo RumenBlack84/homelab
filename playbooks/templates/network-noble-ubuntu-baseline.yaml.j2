@@ -1,0 +1,13 @@
+version: 2
+ethernets:
+  net0:
+    match:
+      name: en*
+    addresses:
+      - {{ ci_ipv4_address }}
+    gateway4: {{ ci_ipv4_gateway }}
+    nameservers:
+      addresses:
+        - {{ ci_nameserver }}
+      search:
+        - {{ ci_domain }}

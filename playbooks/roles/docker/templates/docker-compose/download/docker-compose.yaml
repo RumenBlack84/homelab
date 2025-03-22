@@ -1,0 +1,94 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    pull_policy: always
+    container_name: protonvpn
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 49893:49893 # This is for the qBittorrent WebUI
+      - 8080:8080 # This is for the Sabnzb Webui
+      - 9117:9117 # This is for the Jackett Webui
+      - 9696:9696 # This is for the Prowlarr Webui
+      - 6881:6881 # Listening port for TCP
+      - 6881:6881/udp # Listening port for UDP
+    environment:
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - OPENVPN_USER={{ docker.protonvpn_username }} # REPLACE these with your OpenVPN credentials. Use +pmp after your username to use port forwarding
+      - OPENVPN_PASSWORD={{ docker.protonvpn_password }}
+      - VPN_PORT_FORWARDING=on
+      - SERVER_COUNTRIES=Canada # The server countries we'll use. They have to be P2P
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.0.0/24
+      - DNS_KEEP_NAMESERVER=on
+    volumes:
+      - /appdata/gluetun_data:/gluetun
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "https://google.com"]
+      interval: 10s
+      retries: 5
+      start_period: 20s
+      timeout: 5s
+    restart: unless-stopped
+    dns:
+      - 192.168.0.1  # Local DNS
+    dns_search:
+      - grant.onl  # Resolve *.grant.onl locally
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    pull_policy: always
+    container_name: qbittorrent
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=1000 # to find your current ID just type "id" in the terminal
+      - PGID=1000 # to find your current group ID just type "id" in the terminal
+      - WEBUI_PORT=49893 # This needs to be the exact same port we used on glueton for the WebUI
+      - TORRENTING_PORT=6881
+      - UMASK=000
+    volumes:
+      - /appdata/qbittorrent_data/config:/config
+      - downloads:/Downloads # change the left part of : to your actual path where you want to store your downloads
+    network_mode: "container:protonvpn" # this needs to be the exact same name as the protonvpn container we defined
+    restart: unless-stopped
+# Nice looking qBittorrent webui theme, should already be in the configs but left here for reference recovery
+# curl -s https://api.github.com/repos/VueTorrent/VueTorrent/releases/latest | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url' | xargs -I{} sh -c 'curl -L -o /tmp/vuetorrent.zip {}
+# unzip -o /tmp/vuetorrent.zip -d /appdata/qbittorrent_data/config
+# rm /tmp/vuetorrent.zip'
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=000
+    volumes:
+      - /appdata/sabnzb_data:/config
+      - downloads:/Downloads
+    network_mode: "container:protonvpn" # this needs to be the exact same name as the protonvpn container we defined
+    restart: unless-stopped
+  prowlarr:
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /appdata/prowlarr_data:/config
+    restart: unless-stopped
+    network_mode: "container:protonvpn" # this needs to be the exact same name as the protonvpn container we defined
+volumes:
+  downloads:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr={{ docker.nas_ip }},rw,nfsvers=4.2,nconnect=8"
+      device: ":/srv/gateway-exports/nfs/Downloads"

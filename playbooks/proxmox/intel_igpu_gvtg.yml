@@ -1,0 +1,40 @@
+---
+- name: Intel GVT-g
+  debug:
+    msg: "Starting install procedure for GVT-g igpu virtualization"
+
+- name: Set Grub kernel parameters
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT=.*'
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_gvt=1"'
+    backup: true
+
+- name: Refresh Boot
+  ansible.builtin.command: "proxmox-boot-tool refresh"
+  register: proxmox_boot_refresh
+  changed_when: proxmox_boot_refresh.rc == 0 and "no changes" not in proxmox_boot_refresh.stdout
+
+- name: Reboot the system
+  ansible.builtin.reboot:
+    reboot_timeout: 600  # Adjust the timeout depending on how long the system takes to reboot
+    msg: "Rebooting the system now, waiting up to 600 seconds for it to be available again"
+  when: proxmox_boot_refresh is defined
+  register: reboot_result
+
+- name: Notify user of reboot completion
+  ansible.builtin.debug:
+    msg: "The system has rebooted and is back online."
+  when: reboot_result is defined
+
+- name: Check for mdev for GVT-g
+  ansible.builtin.command: "ls /sys/bus/pci/devices/0000:00:02.0/mdev_supported_types"
+  register: mdev_output
+
+- name: Print mdev_output
+  debug:
+    msg: "mdev_output:\n{{ mdev_output.stdout }}"
+
+- name: Notify of next steps
+  ansible.builtin.debug:
+    msg: "Intel Gvt-g has been configured, please check the above outputs to ensure there is some output for mdevs"

@@ -1,0 +1,129 @@
+---
+- name: Intel sr-iov
+  ansible.builtin.debug:
+    msg: "Starting install procedure for sr-iov igpu virtualization"
+
+- name: Ensure mokutil dependancy is installed
+  ansible.builtin.apt:
+    name: mokutil
+    state: present
+    update_cache: true
+
+- name: Ensure git is installed
+  ansible.builtin.apt:
+    name: git
+    state: present
+    update_cache: true
+
+- name: Ensure dkms is installed
+  ansible.builtin.apt:
+    name: dkms
+    state: present
+    update_cache: true
+
+- name: Ensure sysfsutils is installed
+  ansible.builtin.apt:
+    name: sysfsutils
+    state: present
+    update_cache: true
+
+- name: Ensure jq is installed
+  ansible.builtin.apt:
+    name: jq
+    state: present
+    update_cache: true
+
+- name: Check if the package is already installed
+  ansible.builtin.shell: dpkg-query -W -f='${Version}' i915-sriov-dkms
+  register: installed_version
+  failed_when: false
+  changed_when: false
+
+- name: Get latest tag from GitHub API
+  ansible.builtin.shell: >
+    set -o pipefail && curl -s "https://api.github.com/repos/strongtz/i915-sriov-dkms/tags" | jq -r '.[0].name'
+  register: latest_tag
+  changed_when: false
+
+- name: Debug the latest tag
+  ansible.builtin.debug:
+    msg: "Latest tag is {{ latest_tag.stdout }}"
+
+- name: Download the latest release
+  ansible.builtin.get_url:
+    url: https://github.com/strongtz/i915-sriov-dkms/releases/download/{{ latest_tag }}/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
+    dest: /tmp/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
+    owner: root
+    group: root
+    mode: '0644'
+  when: "latest_tag not in installed_version"
+
+- name: Install the .deb package
+  ansible.builtin.apt:
+    deb: /tmp/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
+  when: "latest_tag not in installed_version"
+
+- name: Set Grub kernel parameters
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT=.*'
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 module_blacklist=xe"'
+    backup: true
+  register: grub_result
+
+# In every system I've seen this has been 00:02.0 however if issues are encountered verify with lspci | grep VGA
+- name: Overwrite /etc/sysfs.conf with SR-IOV configuration and record in sysfs-result
+  ansible.builtin.copy:
+    content: |
+      devices/pci0000:00/0000:00:02.0/sriov_numvfs = 7
+    dest: /etc/sysfs.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: sysfs_result
+
+- name: Update initramfs for all kernels
+  ansible.builtin.command: update-initramfs -u -k all
+  when: grub_result.changed or sysfs_result.changed
+  register: initramfs_result
+  changed_when: true
+
+- name: Refresh Boot # noqa: no-handler
+  ansible.builtin.command: "proxmox-boot-tool refresh"
+  register: proxmox_boot_refresh
+  changed_when: proxmox_boot_refresh.rc == 0 and "no changes" not in proxmox_boot_refresh.stdout
+  when: initramfs_result.changed
+
+- name: Reboot the system
+  ansible.builtin.reboot:
+    reboot_timeout: 600  # Adjust the timeout depending on how long the system takes to reboot
+    msg: "Rebooting the system now, waiting up to 600 seconds for it to be available again"
+  when: proxmox_boot_refresh is defined
+  register: reboot_result
+
+- name: Notify user of reboot completion
+  ansible.builtin.debug:
+    msg: "The system has rebooted and is back online."
+  when: reboot_result is defined
+
+- name: Run lspci and grep for VGA
+  ansible.builtin.shell: "set -o pipefail && lspci | grep VGA"
+  register: lspci_vga_output
+  changed_when: false
+
+- name: Run dmesg and grep for i915
+  ansible.builtin.shell: "set -o pipefail && dmesg | grep i915"
+  register: dmesg_i915_output
+  changed_when: false
+
+- name: Print lspci VGA output
+  ansible.builtin.debug:
+    msg: "lspci VGA output:\n{{ lspci_vga_output.stdout }}"
+
+- name: Print dmesg i915 output
+  ansible.builtin.debug:
+    msg: "dmesg i915 output:\n{{ dmesg_i915_output.stdout }}"
+
+- name: Notify of next steps
+  ansible.builtin.debug:
+    msg: "Intel SR-IOV has been configured, please check the above outputs to ensure there are multiple intel igpus"

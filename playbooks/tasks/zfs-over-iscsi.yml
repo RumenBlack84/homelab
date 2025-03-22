@@ -1,0 +1,62 @@
+--- # This task book is based on this article https://kb.vander.host/disk-management/truenas-scale-proxmox-iscsi-primer/
+# This task book assumes that the ssh key has already been generated and added to the truenas server and all the iscsi and nfs configs have been generated
+# This book is mostly intended to add zfs over iscsi support to new or rebuild nodes in an existing setup
+- name: Download the KSATechnologies GPG key
+  ansible.builtin.get_url:
+    url: "https://dl.cloudsmith.io/public/ksatechnologies/truenas-proxmox/gpg.284C106104A8CE6D.key"
+    dest: "/tmp/ksatechnologies.gpg"
+    mode: "0644"
+
+- name: Convert the GPG key and move to the keyring directory
+  ansible.builtin.shell:
+    cmd: gpg --dearmor < /tmp/ksatechnologies.gpg > /usr/share/keyrings/ksatechnologies-truenas-proxmox-keyring.gpg
+    creates: /usr/share/keyrings/ksatechnologies-truenas-proxmox-keyring.gpg
+
+- name: Ensure KSATechnologies repository file exists
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/ksatechnologies-repo.list
+    state: touch
+    mode: "0644"
+
+- name: Add KSATechnologies repository header
+  ansible.builtin.blockinfile:
+    path: /etc/apt/sources.list.d/ksatechnologies-repo.list
+    block: |
+      # Source: KSATechnologies
+      # Site: https://cloudsmith.io
+      # Repository: KSATechnologies / truenas-proxmox
+      # Description: TrueNAS plugin for Proxmox VE - Production
+
+- name: Add KSATechnologies repository line
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list.d/ksatechnologies-repo.list
+    line: >
+      deb [signed-by=/usr/share/keyrings/ksatechnologies-truenas-proxmox-keyring.gpg]
+      https://dl.cloudsmith.io/public/ksatechnologies/truenas-proxmox/deb/debian
+      any-version main
+    state: present
+
+- name: Update APT cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install TrueNAS plugin for Proxmox
+  ansible.builtin.apt:
+    name: freenas-proxmox
+    state: present
+
+- name: Check TrueNAS host key and add to variable
+  ansible.builtin.command:
+    cmd: ssh-keyscan -H "{{ truenas_ip }}"
+  register: ssh_keyscan_output
+  changed_when: false
+
+- name: Ensure TrueNAS host key is in known_hosts
+  ansible.builtin.lineinfile:
+    path: /root/.ssh/known_hosts
+    line: "{{ ssh_keyscan_output.stdout }}"
+    state: present
+    create: true
+    owner: root
+    group: root
+    mode: '0644'

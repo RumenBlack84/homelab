@@ -1,0 +1,174 @@
+- name: Ensure dependancies are installed
+  ansible.builtin.apt:
+    name:
+      - fontconfig
+      - unzip
+      - jq
+    state: present
+    update_cache: true
+
+- name: Set bashrc file for root
+  ansible.builtin.blockinfile:
+    path: /root/.bashrc
+    marker: "# {mark} Ansible managed block for custom functions"
+    block: |
+      apt() {
+        command nala "$@"
+      }
+      sudo() {
+        if [ "$1" = "apt" ]; then
+          shift
+          command sudo nala "$@"
+        else
+          command sudo "$@"
+        fi
+      }
+      eval "$(oh-my-posh init bash --config https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/refs/heads/main/themes/devious-diamonds.omp.yaml)"
+      alias neofetch=fastfetch
+      neofetch
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+# Install oh my posh
+
+- name: Install oh my posh
+  ansible.builtin.shell: >
+    set -o pipefail && curl -s https://ohmyposh.dev/install.sh | bash -s -- -d /usr/local/bin
+  changed_when: false
+
+# Fast fetch installation and update
+
+- name: Get latest tag from GitHub API
+  ansible.builtin.shell: >
+    set -o pipefail && curl -s "https://api.github.com/repos/fastfetch-cli/fastfetch/tags" | jq -r '.[0].name'
+  register: latest_tag_raw
+  changed_when: false
+
+- name: Set latest_tag as a clean string
+  ansible.builtin.set_fact:
+    latest_tag: "{{ latest_tag_raw.stdout | trim }}"
+
+- name: Debug the latest tag
+  ansible.builtin.debug:
+    msg: "Latest tag is {{ latest_tag }}"
+
+- name: Get installed fastfetch version
+  ansible.builtin.set_fact:
+    fastfetch_installed_version: "{{ ansible_facts.packages['fastfetch'][0].version if 'fastfetch' in ansible_facts.packages else 'not_installed' }}"
+
+- name: Debug installed version
+  ansible.builtin.debug:
+    msg: "Fastfetch installed version: {{ fastfetch_installed_version }}"
+
+- name: Check if fastfetch needs updating
+  ansible.builtin.set_fact:
+    fastfetch_update_required: "{{ fastfetch_installed_version != latest_tag }}"
+  when: fastfetch_installed_version != 'not_installed'
+
+- name: Download the latest release
+  ansible.builtin.get_url:
+    url: "https://github.com/fastfetch-cli/fastfetch/releases/download/{{ latest_tag | string }}/fastfetch-linux-amd64.deb"
+    dest: "/tmp/fastfetch-linux-amd64.deb"
+    owner: root
+    group: root
+    mode: '0644'
+  when: "latest_tag not in fastfetch_installed_version"
+
+- name: Install the .deb package
+  ansible.builtin.apt:
+    deb: /tmp/fastfetch-linux-amd64.deb
+  when: "latest_tag not in fastfetch_installed_version"
+
+# meslo nerd font installation and update
+
+- name: Get latest tag from GitHub API
+  ansible.builtin.shell: >
+    set -o pipefail && curl -s "https://api.github.com/repos/ryanoasis/nerd-fonts/tags" | jq -r '.[0].name'
+  register: latest_tag_raw
+  changed_when: false
+
+- name: Set latest_tag as a clean string
+  ansible.builtin.set_fact:
+    latest_tag: "{{ latest_tag_raw.stdout | trim }}"
+
+- name: Get Current Version if any
+  ansible.builtin.slurp:
+    src: /usr/share/fonts/meslo.ver
+  register: file_content
+  failed_when: false
+
+- name: Get Current Version if any
+  ansible.builtin.set_fact:
+    meslo_ver: "{{ file_content.content | b64decode | trim }}"
+  when: file_content is defined and file_content.content is defined
+
+- name: Debug the latest tag
+  ansible.builtin.debug:
+    msg: "Latest tag is {{ latest_tag }}"
+
+- name: Debug the meslo_ver
+  ansible.builtin.debug:
+    msg: "Current Version is {{ meslo_ver }}"
+  when: file_content is defined and file_content.content is defined
+
+- name: Check if meslo font needs updating
+  ansible.builtin.set_fact:
+    meslo_update_required: "{{ meslo_ver != latest_tag }}"
+  when: file_content is defined and file_content.content is defined
+
+- name: Download the latest release
+  ansible.builtin.get_url:
+    url: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ latest_tag }}/Meslo.tar.xz"
+    dest: /tmp/Meslo.tar.xz
+    owner: root
+    group: root
+    mode: '0644'
+  when: meslo_update_required | default(true) | bool
+
+- name: Extract Meslo fonts archive
+  ansible.builtin.unarchive:
+    src: /tmp/Meslo.tar.xz
+    dest: /usr/share/fonts
+    remote_src: true
+    extra_opts: [--xz]
+  when: meslo_update_required | default(true) | bool
+
+- name: Write variable to file if the update was successfull
+  ansible.builtin.copy:
+    content: "{{ latest_tag }}"
+    dest: "/usr/share/fonts/meslo.ver"
+    owner: root
+    group: root
+    mode: "0644"
+  when: meslo_update_required | default(true) | bool
+
+- name: Create Oh My Posh Themes Directory
+  ansible.builtin.file:
+    path: /opt/oh-my-posh-themes
+    state: directory
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Download Oh My Posh Theme
+  ansible.builtin.get_url:
+    url: "https://packages.linbit.com/package-signing-pubkey.asc"
+    dest: /opt/oh-my-posh-themes/devious-diamonds.omp.yaml
+    mode: '0644'
+
+- name: Set Oh my posh configs globally
+  ansible.builtin.blockinfile:
+    path: /etc/bash.bashrc
+    marker: "# {mark} Oh my Posh configs"
+    block: |
+      eval "$(oh-my-posh init bash --config /opt/oh-my-posh-themes/devious-diamonds.omp.yaml)"
+      alias neofetch=fastfetch
+      fastfetch
+    owner: root
+    group: root
+    mode: '0644'

@@ -1,0 +1,30 @@
+---
+- name: Get list of all VMs cluster-wide
+  ansible.builtin.command:
+    cmd: pvesh get /cluster/resources --type vm --output-format json-pretty
+  register: pvesh_output
+  changed_when: false
+
+- name: Parse JSON output for VM IDs
+  ansible.builtin.set_fact:
+    existing_vm_ids: >-
+      {{
+        pvesh_output.stdout |
+        from_json |
+        map(attribute='vmid') |
+        map('int')
+      }}
+
+- name: Find the first available VM ID
+  ansible.builtin.set_fact:
+    first_available_id: >-
+      {{
+        (
+          range(100, 9999) |
+          difference(existing_vm_ids)
+        )[0]
+      }}
+
+- name: Debug first available VM ID
+  ansible.builtin.debug:
+    msg: "The first available VM ID is {{ first_available_id }}"

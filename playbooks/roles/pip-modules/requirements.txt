@@ -1,0 +1,4 @@
+docker  # Required for community.docker
+ansible  # Optional, ensures Ansible is installed
+proxmoxer # Required for community.general.proxmox
+requests # Required for community.general.proxmox

@@ -1,0 +1,34 @@
+- name: Ensure Go is installed
+  ansible.builtin.apt:
+    name: golang
+    state: present
+    update_cache: true
+
+- name: Ensure git is installed
+  ansible.builtin.apt:
+    name: git
+    state: present
+    update_cache: true
+
+- name: Clone the repository
+  ansible.builtin.git:
+    repo: 'https://github.com/HikariKnight/ls-iommu.git'
+    version: main
+    dest: /tmp/ls-iommu-repo
+
+- name: Build the ls-iommu binary and place it in /usr/bin
+  ansible.builtin.shell: >
+      CGO_ENABLED=0 go build -ldflags="-X github.com/HikariKnight/ls-iommu/internal/version.Version=$(git rev-parse --short HEAD)"
+      -o /usr/bin/ls-iommu cmd/main.go
+  args:
+    chdir: /tmp/ls-iommu-repo
+  changed_when: false # lying about change when because I don't want to have to implement version checks
+
+- name: Verify the binary is built and in /usr/bin
+  ansible.builtin.stat:
+    path: /usr/bin/ls-iommu
+  register: ls_iommu_stat
+
+- name: Debug output of binary existence
+  ansible.builtin.debug:
+    msg: "ls-iommu binary exists at /usr/bin/ls-iommu: {{ ls_iommu_stat.stat.exists }}"

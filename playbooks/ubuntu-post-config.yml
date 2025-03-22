@@ -1,0 +1,21 @@
+---
+- name: Run commands on the new VM
+  hosts: ubuntu
+  remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
+  become: true
+  vars_files:
+    - vault/vault.yml
+  vars:
+    ansible_shell_executable: /bin/bash  # Use bash as the default shell
+    ansible_ssh_pipelining: true
+  tasks:
+    - name: Run the oh my posh role so we can have a pretty cli
+      ansible.builtin.include_role:
+        name: oh-my-posh
+    - name: Debug docker_enabled value
+      ansible.builtin.debug:
+        msg: "docker_enabled is: {{ hostvars[inventory_hostname].docker_enabled | default(false) | bool }}"
+    - name: Run Docker role only if host is set to use it
+      ansible.builtin.include_role:
+        name: docker
+      when: hostvars[inventory_hostname].docker_enabled | default(false) | bool

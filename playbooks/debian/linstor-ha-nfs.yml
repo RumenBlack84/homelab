@@ -1,0 +1,27 @@
+---
+- name: Install linstor on Debian and create HA NFS share
+  hosts: all
+  become: true
+  tasks:
+    - name: Download Linstor Public Repo Key
+      ansible.builtin.get_url:
+        url: "https://packages.linbit.com/package-signing-pubkey.asc"
+        dest: /tmp/package-signing-pubkey.asc
+        mode: '0755'
+    - name: Import Linstor Repo key
+      environment:
+        TERM: xterm
+      ansible.builtin.command: "gpg --yes -o /etc/apt/trusted.gpg.d/linbit-keyring.gpg --dearmor /tmp/package-signing-pubkey.asc"
+      args:
+        creates: /etc/apt/trusted.gpg.d/linbit-keyring.gpg
+    - name: Overwrite linbit.list with LINBIT repository entry
+      ansible.builtin.copy:
+        content: |
+          deb [ signed-by=/etc/apt/trusted.gpg.d/linbit-keyring.gpg] http://packages.linbit.com/public/ bookworm misc
+        dest: /etc/apt/sources.list.d/linbit.list
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true

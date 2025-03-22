@@ -1,0 +1,8 @@
+services:
+  actual_server:
+    image: docker.io/actualbudget/actual-server:latest
+    ports:
+      - '5006:5006'
+    volumes:
+      - /appdata/actual_budget_data:/data
+    restart: unless-stopped

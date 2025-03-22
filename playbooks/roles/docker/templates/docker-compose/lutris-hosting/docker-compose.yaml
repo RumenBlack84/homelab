@@ -1,0 +1,14 @@
+services:
+  nginx:
+    image: lscr.io/linuxserver/nginx:latest
+    container_name: nginx
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=000
+      - TZ=America/Toronto
+    volumes:
+      - /appdata/lutris_data:/config
+    ports:
+      - 10002:80
+    restart: unless-stopped

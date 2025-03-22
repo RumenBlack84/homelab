@@ -1,0 +1,10 @@
+#I live in /etc/systemd/system/linstor-gateway.service
+[Unit]
+Description=LINSTOR Gateway
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/linstor-gateway server --addr ":8080"
+
+[Install]
+WantedBy=multi-user.target

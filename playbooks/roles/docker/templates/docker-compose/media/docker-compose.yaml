@@ -1,0 +1,88 @@
+---
+services:
+  radarr:
+    image: hotio/radarr:latest
+    container_name: radarr
+    environment:
+      - UMASK=000
+    volumes:
+      - /appdata/radarr_data:/config
+      - media:/Media
+      - downloads:/Downloads
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+  sonarr:
+    container_name: sonarr
+    image: hotio/sonarr:latest
+    ports:
+      - "8989:8989"
+    environment:
+      - UMASK=000
+    volumes:
+      - /appdata/sonarr_data:/config
+      - media:/Media
+      - downloads:/Downloads
+    restart: unless-stopped
+  ombi:
+    image: linuxserver/ombi:latest
+    container_name: ombi
+    environment:
+      - BASE_URL=/ombi
+    volumes:
+      - /appdata/ombi_data:/config
+    ports:
+      - 3579:3579
+    restart: unless-stopped
+  maintainerr:
+    image: jorenn92/maintainerr:latest
+    container_name: maintainerr
+    volumes:
+      - /appdata/maintainerr_data:/opt/data
+    environment:
+      - TZ=America/Chicago
+    ports:
+      - 6246:6246
+    restart: unless-stopped
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - TZ=America/Toronto
+    volumes:
+      - /appdata/bazarr_data:/config
+      - media:/Media
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+  autoscan:
+    container_name: autoscan
+    image: hotio/autoscan:latest
+    ports:
+      - "3030:3030"
+    volumes:
+      - /appdata/autoscan_data:/config
+    restart: unless-stopped
+  tautulli:
+    image: tautulli/tautulli:latest
+    container_name: tautulli
+    restart: unless-stopped
+    volumes:
+      - /appdata/tautulli_data:/config
+    environment:
+      - TZ=America/New_York
+    ports:
+      - 8181:8181
+volumes:
+  media:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr={{ docker.nas_ip }},rw,nfsvers=4.2,nconnect=8"
+      device: ":/srv/gateway-exports/nfs/Media"
+  downloads:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr={{ docker.nas_ip }},rw,nfsvers=4.2,nconnect=8"
+      device: ":/srv/gateway-exports/nfs/Downloads"

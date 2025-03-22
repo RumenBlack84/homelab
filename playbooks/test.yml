@@ -1,0 +1,5 @@
+---
+- name: Test whatever role we are working on
+  hosts: proxmox
+  roles:
+    - first-available-vm-id

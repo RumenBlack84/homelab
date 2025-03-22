@@ -1,0 +1,80 @@
+---
+- name: Prepare Cloud-Init Configuration #
+  hosts: "{{ target_host }}"
+  vars_files: # We are getting the ssh pubkey and ci_password from the vault
+    - vault/vault.yml
+  vars:
+    target_host: Aesir # Default value can be overwritten by passing it in cli or runner
+    ci_user_path: /mnt/pve/BulkPoolShared/snippets/user-noble-ubuntu-baseline.yml
+    ci_network_path: /mnt/pve/BulkPoolShared/snippets/network-noble-ubuntu-baseline.yml
+    ci_user_path_datastore: BulkPoolShared:snippets/user-noble-ubuntu-baseline.yml
+    ci_network_path_datastore: BulkPoolShared:snippets/network-noble-ubuntu-baseline.yml
+    # ci_hostname: null  # should be provided via cli or runner like semaphore
+    ci_domain: grant.onl # This is assuming the fqdn doesn't change in the environment. If it changes a lot it'd be better to pass similar to ci_hostname
+    ci_fqdn: "{{ ci_hostname }}.{{ ci_domain }}"
+    # cloud-init.ci_username get from vault
+    # ci_ipv4_address: null  # should be provided through cli or runner in cidr format e.g. 192.168.0.1/24
+    # ci_ipv4_gateway: null  # should be provided through cli or runner
+    ci_target_storage: linstor_DfltStorPool
+    ci_template_id: 9000
+    ci_nameserver: 192.168.0.1
+  roles:
+    - first-available-vm-id # get the first free vm/ct id in a range from 100-9000 and loads it as {{ first_available_id }}
+  pre_tasks:
+    - name: End playbook if ci_hostname is null
+      ansible.builtin.fail:
+        msg: "Terminating playbook execution due to ci_hostname not being defined"
+      when: not ci_hostname or not ci_ipv4_address or not ci_ipv4_gateway
+  tasks:
+    - name: Generate Cloud-Init User Configuration
+      ansible.builtin.template:
+        src: user-noble-ubuntu-baseline.yml.j2
+        dest: "{{ ci_user_path }}"
+        mode: "0644"
+    - name: Generate Cloud-Init Network Configuration
+      ansible.builtin.template:
+        src: network-noble-ubuntu-baseline.yml.j2
+        dest: "{{ ci_network_path }}"
+        mode: "0644"
+    - name: Set template to use custom ci configs
+      ansible.builtin.command:
+        cmd: qm set "{{ ci_template_id }}" --cicustom "user={{ ci_user_path_datastore }},network={{ ci_network_path_datastore }}"
+      changed_when: false
+
+    - name: Debug output of qm set command
+      ansible.builtin.debug:
+        msg: >-
+              The QM set command was;
+              qm set "{{ ci_template_id }}" --cicustom "user={{ ci_user_path_datastore }},network={{ ci_network_path_datastore }}"
+
+    - name: Show the clone command used
+      ansible.builtin.debug:
+        msg: >-
+              The Clone command was;
+              qm clone "{{ ci_template_id }}" "{{ first_available_id }}"
+              --name "{{ ci_hostname }}" --full --format raw
+              --storage "{{ ci_target_storage }}" --target "{{ inventory_hostname }}"
+
+    - name: Clone template to new VM
+      ansible.builtin.command:
+        cmd: >-
+              qm clone "{{ ci_template_id }}" "{{ first_available_id }}"
+              --name "{{ ci_hostname }}" --full --format raw
+              --storage "{{ ci_target_storage }}" --target "{{ inventory_hostname }}"
+      register: clone_result
+      changed_when: clone_result.rc == 0
+
+
+    - name: Debug output of clone command
+      ansible.builtin.debug:
+        msg: The output was "{{ clone_result }}"
+    - name: Resize disk on new VM # change to desired disk and size
+      ansible.builtin.command:
+        cmd: qm resize "{{ first_available_id }}" scsi0 50G
+      register: resize_result
+      changed_when: resize_result.rc == 0
+    - name: Start our new VM so Cloud-Init can do it's job
+      ansible.builtin.command:
+        cmd: qm start "{{ first_available_id }}"
+      register: qmstart_result
+      changed_when: qmstart_result.rc == 0

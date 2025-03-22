@@ -1,0 +1,129 @@
+---
+- name: Debug vars passed to me
+  ansible.builtin.debug:
+    msg: |
+      item.value.pool_name is being presented as: {{ item.value.pool_name }}
+      item.value.zfs_pool is being presented as: {{ item.value.zfs_pool }}
+      item.value.placecount is being presented as: {{ item.value.placecount }}
+      item.value.resource_group_name is being presented as: {{ item.value.resource_group_name }}
+# Create Storage pool
+- name: Get list of storage pools for this node
+  ansible.builtin.command: "linstor storage-pool list -n {{ inventory_hostname }} -p"
+  register: linstor_storage_pool_raw
+  changed_when: false
+  when: (linstor_disks | default(false) | bool)
+
+- name: Debug the variable
+  ansible.builtin.debug:
+    var: linstor_storage_pool_raw
+  when: (linstor_disks | default(false) | bool)
+
+- name: Extract storage pool names
+  ansible.builtin.set_fact:
+    linstor_existing_pools: >-
+      {{ linstor_storage_pool_raw.stdout_lines
+        | select('search', '^[|] \S+')
+        | map('regex_replace', '^[|] (\S+).*', '\1')
+        | list }}
+  when: (linstor_disks | default(false) | bool)
+
+- name: Debug the variable
+  ansible.builtin.debug:
+    var: linstor_existing_pools
+  when: (linstor_disks | default(false) | bool)
+
+- name: Determine if storage pool needs to be created
+  ansible.builtin.set_fact:
+    create_storage_pool: "{{ item.value.pool_name not in linstor_existing_pools }}"
+  when: (linstor_disks | default(false) | bool)
+
+- name: Create storage pool if needed
+  ansible.builtin.command:
+    cmd: "linstor storage-pool create zfsthin {{ inventory_hostname }} {{ item.value.pool_name }} {{ item.value.zfs_pool }}"
+  when:
+    - create_storage_pool | default(false) | bool
+    - linstor_disks | default(false) | bool
+  changed_when: false
+
+# Create Resource Group
+- name: Get list of resource groups
+  ansible.builtin.command: "linstor resource-group list -p"
+  register: linstor_resource_groups_raw
+  changed_when: false
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Debug the variable
+  ansible.builtin.debug:
+    var: linstor_resource_groups_raw
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Extract resource group names
+  ansible.builtin.set_fact:
+    linstor_existing_resource_groups: >-
+      {{ linstor_resource_groups_raw.stdout_lines
+        | select('search', '^[|] \S+')
+        | map('regex_replace', '^[|] (\S+).*', '\1')
+        | list }}
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Debug the variable
+  ansible.builtin.debug:
+    var: linstor_existing_resource_groups
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Determine if resource group needs to be created
+  ansible.builtin.set_fact:
+    create_resource_group: "{{ item.value.resource_group_name not in linstor_existing_resource_groups }}"
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Create a resource group, run command only on controller node
+  ansible.builtin.command: >
+      linstor resource-group create
+      {{ item.value.resource_group_name }}
+      --place-count {{ item.value.placecount }}
+      --diskless-on-remaining true
+      --storage-pool {{ item.value.pool_name }}
+  when:
+    - create_resource_group | default(false) | bool
+    - (linstor_initial_controller | default(false) | bool)
+  changed_when: false
+
+# Create Volume Group
+- name: Get list of volume-groups
+  ansible.builtin.command: "linstor volume-group list {{ item.value.resource_group_name }}"
+  register: linstor_volume_groups_raw
+  changed_when: false
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Debug the variable
+  ansible.builtin.debug:
+    var: linstor_volume_groups_raw
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Extract volume group names
+  ansible.builtin.set_fact:
+    linstor_existing_volume_groups: >-
+      {{ linstor_volume_groups_raw.stdout_lines
+        | select('search', '^[|] \S+')
+        | map('regex_replace', '^[|] (\S+).*', '\1')
+        | list }}
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Debug the variable
+  ansible.builtin.debug:
+    var: linstor_existing_volume_groups
+  when: (linstor_initial_controller | default(false) | bool)
+
+# Just checking to see if the Storage pool name shows up in the volume groups, that should be enough though.
+- name: Determine if volume group needs to be created
+  ansible.builtin.set_fact:
+    create_volume_group: "{{ '0' not in linstor_existing_volume_groups }}"
+  when: (linstor_initial_controller | default(false) | bool)
+
+- name: Create volume group if needed
+  ansible.builtin.command:
+    cmd: "linstor volume-group create {{ item.value.resource_group_name }}"
+  when:
+    - create_volume_group | default(false) | bool
+    - linstor_initial_controller | default(false) | bool
+  changed_when: false

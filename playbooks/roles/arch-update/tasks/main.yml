@@ -1,0 +1,53 @@
+---
+- name: Ensure the pacman key has been populated
+  ansible.builtin.command: "pacman-key --populate"
+  changed_when: false # pacman-key --init is indemnitable by itself
+
+- name: Create the `aur_builder` user
+  ansible.builtin.user:
+    name: aur_builder
+    create_home: true
+    group: aur_builder
+
+- name: Allow the `aur_builder` user to run `sudo pacman` without a password
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/11-install-aur_builder
+    line: 'aur_builder ALL=(ALL) NOPASSWD: /usr/bin/pacman'
+    create: true
+    mode: '0644'
+    validate: 'visudo -cf %s'
+
+- name: Create the `bgrant` user
+  ansible.builtin.user:
+    name: bgrant
+    create_home: true
+    group: bgrant
+
+- name: Allow the `bgrant` user to run `sudo` without a password
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/12-bgrant
+    line: 'bgrant ALL=(ALL) NOPASSWD:ALL'
+    create: true
+    mode: '0644'
+    validate: 'visudo -cf %s'
+
+- name: Add public key to multiple authorized_keys files
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    block: |
+      {{ ssh.pub_key }}
+    marker: "# BEGIN GLOBAL SSH KEYS"
+    create: true
+    mode: "0644"
+    owner: root
+    group: root
+  loop:
+    - /home/bgrant/.ssh/authorized_keys
+    - /root/.ssh/authorized_keys
+
+- name: Upgrade the system using yay
+  become: true
+  become_user: aur_builder
+  kewlfft.aur.aur:
+    upgrade: true
+    use: yay

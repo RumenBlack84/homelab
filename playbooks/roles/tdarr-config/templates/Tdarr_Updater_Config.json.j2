@@ -1,0 +1,16 @@
+{
+  "platform_arch": "default",
+  "modules": {
+    "Tdarr_Node": {
+      "enabled": {{ tdarr_node | default(false) | lower }},
+      
+      "requiredVersion": "latest",
+      "currentVersion": ""
+    },
+    "Tdarr_Server": {
+      "enabled": {{ tdarr_server | default(false) | lower }},
+      "requiredVersion": "latest",
+      "currentVersion": ""
+    }
+  }
+}

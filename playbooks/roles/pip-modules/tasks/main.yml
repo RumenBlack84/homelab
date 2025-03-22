@@ -1,0 +1,5 @@
+---
+- name: Install required Python modules for Ansible
+  ansible.builtin.pip:
+    requirements: requirements.txt
+  delegate_to: localhost

@@ -1,0 +1,89 @@
+---
+- name: Check if Container exists first
+  delegate_to: localhost
+  community.general.proxmox_vm_info:
+    node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+  register: container_info
+  ignore_errors: true  # ✅ Avoids playbook failure if container doesn't exist
+
+- name: Debug container_info
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "Checking if container exists: {{ container_info }}"
+
+- name: Set a fact for container existence
+  delegate_to: localhost
+  ansible.builtin.set_fact:
+    container_exists: "{{ container_info.failed | default(false) | bool }}"
+
+- name: Debug container_info
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "Container Exists: {{ container_exists }}"
+
+- name: Save hostvars as shorter vars to prevent line too long errors later on
+  ansible.builtin.set_fact:
+    bridge: "{{ hostvars[inventory_hostname].interface }}"
+    subnet: "{{ hostvars[inventory_hostname].subnet }}"
+    ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    gw: "{{ hostvars[inventory_hostname].gateway }}"
+
+- name: Deploy a New Container based on inventory
+  delegate_to: localhost
+  community.general.proxmox:
+    node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    pubkey: "{{ ssh.pub_key }}"
+    hostname: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+    ostemplate: "{{ hostvars[inventory_hostname].template }}"
+    ostype: "{{ hostvars[inventory_hostname].ostype | default('auto') }}"
+    cpuunits: "{{ hostvars[inventory_hostname].cpuunits | default(100) | int }}"
+    memory: "{{ hostvars[inventory_hostname].memory }}"
+    onboot: "{{ hostvars[inventory_hostname].onboot | default(false) | bool }}"
+    disk: "{{ hostvars[inventory_hostname].storage }}"
+    unprivileged: "{{ hostvars[inventory_hostname].unprivileged | default(true) | bool }}"
+    features:
+      - nesting=1
+      - keyctl=1
+    netif:
+      net0: "name=eth0,gw={{ gw }},ip={{ ip }}{{ subnet }},bridge={{ bridge }}"
+    timeout: 240
+    tags: "{{ hostvars[inventory_hostname].tags | default('untagged') }}"
+    state: present
+  when:
+    - (hostvars[inventory_hostname].lxc | default(false) | bool)
+    - not (container_exists | default(true) | bool)
+
+- name: Wait for the container to be fully Deployed
+  delegate_to: localhost
+  ansible.builtin.wait_for:
+    timeout: 5
+
+- name: Ensure container is started
+  delegate_to: localhost
+  community.general.proxmox:
+    hostname: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    timeout: 120
+    state: started
+  ignore_errors: true
+  register: ignore_errors_register
+  # I don't care if the start command fails because its going to fail when already started
+
+- name: Debug container start in case we care about the errors
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "Container Start Output: {{ ignore_errors_register }}"
+
+- name: Wait for the container to be fully running
+  delegate_to: localhost
+  ansible.builtin.wait_for:
+    timeout: 30

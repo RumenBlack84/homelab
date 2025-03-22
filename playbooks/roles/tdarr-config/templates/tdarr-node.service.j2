@@ -1,0 +1,21 @@
+[Unit]
+Description=Tdarr Node Daemon
+After=network.target
+
+[Service]
+# Change to the correct user
+User=root
+# Change to the correct group
+Group=root
+Type=simple
+
+# Change to the correct path
+WorkingDirectory=/opt/Tdarr/Tdarr_Node
+# Change to the correct path
+ExecStart=/opt/Tdarr/Tdarr_Node/Tdarr_Node
+TimeoutStopSec=20
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

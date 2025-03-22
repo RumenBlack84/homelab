@@ -1,0 +1,31 @@
+# I live in /etc/drbd-reactor.d/linstor_db.toml
+[[promoter]]
+id = "linstor_db"
+resource = "linstor_db"
+# Maximum priority for the node
+node-max-priority = true
+
+# Define individual controller node priorities
+{% for node in linstor_controllers %}
+[[promoter.node-priority]]
+name = "{{ node }}"
+priority = {{ hostvars[node].linstor_controller_priority | default(50) }}
+{% endfor %}
+
+
+[promoter.resources.linstor_db]
+start = [
+    "var-lib-linstor.mount", 
+    "linstor-controller.service", 
+    "linstor-gateway.service",
+    "ocf:heartbeat:IPaddr2 service_ip_db cidr_netmask=32 ip=192.168.0.4"
+    ]
+
+stop = [
+    "var-lib-linstor.mount",
+     "linstor-controller.service",
+     "linstor-gateway.service",
+     "ocf:heartbeat:IPaddr2 service_ip_db cidr_netmask=32 ip=192.168.0.4"
+     ]
+on-stop-failure = "demote"  # Possible values: "ignore", "stop", "demote"
+stop-services-on-exit = true  # Ensures services are stopped when the promoter exits

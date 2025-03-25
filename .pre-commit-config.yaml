@@ -10,8 +10,8 @@ repos:
               echo "Vault file not encrypted: $file";
               exit 1;
             fi;
-          done' -- 
+          done' --
         language: system
         types: [file]
-        files: ".*vault\\.yml$"
+        files: "(^|/)vault\\.yml$"
         pass_filenames: true

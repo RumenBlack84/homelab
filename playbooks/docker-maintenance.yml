@@ -1,5 +1,6 @@
 - name: A series of tasks for docker maintenance (backup,update,prune,etc)
   hosts: docker
+  remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
   become: true
   vars:
     compose_root: /home/bgrant/docker-compose

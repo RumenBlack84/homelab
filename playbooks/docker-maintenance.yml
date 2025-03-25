@@ -1,0 +1,52 @@
+- name: A series of tasks for docker maintenance (backup,update,prune,etc)
+  hosts: docker_hosts
+  become: true
+  vars:
+    compose_root: /home/bgrant/docker-compose
+    backup_dir: /home/bgrant/docker-backups
+    appdata_dir: /appdata
+    timestamp: "{{ lookup('pipe', 'date +%F-%H%M') }}"
+  tasks:
+
+    - name: Find all Docker Compose folders
+      ansible.builtin.find:
+        paths: "{{ compose_root }}"
+        file_type: directory
+        recurse: false
+      register: compose_dirs
+
+    - name: Stop (down) all stacks
+      community.docker.docker_compose_v2:
+        project_src: "{{ item.path }}"
+        state: absent
+      loop: "{{ compose_dirs.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Backup /appdata
+      community.general.archive:
+        path: "{{ appdata_dir }}"
+        dest: "{{ backup_dir }}/appdata-{{ timestamp }}.tar.gz"
+        format: gz
+        remove: false
+        mode: '0744'
+
+    - name: Bring stacks back up
+      community.docker.docker_compose_v2:
+        project_src: "{{ item.path }}"
+        state: present
+        pull: always
+      loop: "{{ compose_dirs.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Run Docker system prune after everything is back up
+      ansible.builtin.command: docker system prune -af --volumes
+      changed_when: false # command itself will make sure its only cleaning unused stuff
+# Might be a good idea to have backup clean-ups and rclone shipping at some point, but not tonight

@@ -1,5 +1,5 @@
 - name: A series of tasks for docker maintenance (backup,update,prune,etc)
-  hosts: docker_hosts
+  hosts: docker
   become: true
   vars:
     compose_root: /home/bgrant/docker-compose

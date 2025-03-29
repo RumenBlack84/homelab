@@ -1,5 +1,6 @@
 ---
 - name: Save hostvars as shorter vars to prevent line too long errors later on
+  delegate_to: localhost
   ansible.builtin.set_fact:
     bridge: "{{ hostvars[inventory_hostname].interface }}"
     subnet: "{{ hostvars[inventory_hostname].subnet }}"
@@ -7,6 +8,7 @@
     gw: "{{ hostvars[inventory_hostname].gateway }}"
 
 - name: Clone VM with source vmid and target newid and raw format
+  delegate_to: localhost
   community.general.proxmox_kvm:
     api_user: "{{ proxmox.api_user }}"
     api_password: "{{ proxmox.api_password }}"
@@ -26,6 +28,7 @@
     timeout: 300
 
 - name: Update existing disk
+  delegate_to: localhost
   community.general.proxmox_disk:
     api_user: "{{ proxmox.api_user }}"
     api_password: "{{ proxmox.api_password }}"

@@ -116,7 +116,7 @@
 
 - name: Create Tdarr node config if node flag is true
   ansible.builtin.template:
-    src: tdarr-configs/Tdarr_Node_Config.json.j2
+    src: Tdarr_Node_Config.json.j2
     dest: /opt/Tdarr/configs/Tdarr_Node_Config.json
     owner: root
     group: root
@@ -125,7 +125,7 @@
 
 - name: Create Tdarr server config if node flag is true
   ansible.builtin.template:
-    src: tdarr-configs/Tdarr_Server_Config.json.j2
+    src: Tdarr_Server_Config.json.j2
     dest: /opt/Tdarr/configs/Tdarr_Server_Config.json
     owner: root
     group: root
@@ -134,7 +134,7 @@
 
 - name: Create Tdarr Updater config
   ansible.builtin.template:
-    src: tdarr-configs/Tdarr_Updater_Config.json.j2
+    src: Tdarr_Updater_Config.json.j2
     dest: /opt/Tdarr/configs/Tdarr_Updater_Config.json
     owner: root
     group: root
@@ -162,14 +162,14 @@
 
 - name: Copy tdarr-node service to hosts with node flag set
   ansible.builtin.copy:
-    src: tdarr-configs/tdarr-node.service.j2
+    src: tdarr-node.service.j2
     dest: /etc/systemd/system/tdarr-node.service
     mode: '0774'
   when: tdarr_node | default(false)
 
 - name: Copy tdarr-server service to hosts with node flag set
   ansible.builtin.copy:
-    src: tdarr-configs/tdarr-server.service.j2
+    src: tdarr-server.service.j2
     dest: /etc/systemd/system/tdarr-server.service
     mode: '0774'
   when: tdarr_server | default(false)

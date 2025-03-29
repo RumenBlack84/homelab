@@ -1,0 +1,40 @@
+---
+- name: Get latest tag from GitHub API
+  ansible.builtin.shell: >
+    set -o pipefail && curl -s "https://api.github.com/repos/LINBIT/linstor-gateway/tags" | jq -r '.[0].name'
+  register: latest_tag
+  changed_when: false
+
+- name: Debug the latest tag
+  ansible.builtin.debug:
+    msg: "Latest tag is {{ latest_tag.stdout }}"
+
+- name: Check if linstor-gateway binary exists
+  ansible.builtin.stat:
+    path: /usr/sbin/linstor-gateway
+  register: linstor_gateway_stat
+
+- name: Get installed linstor-gateway version
+  ansible.builtin.command: "/usr/sbin/linstor-gateway -v"
+  register: installed_version_raw
+  changed_when: installed_version_raw.rc != 0
+  when: linstor_gateway_stat.stat.exists
+
+- name: Normalize installed version
+  ansible.builtin.set_fact:
+    installed_version: "{{ installed_version_raw.stdout | regex_search('linstor-gateway version ([0-9.]+)', '\\1') }}"
+  when: linstor_gateway_stat.stat.exists
+
+- name: Set installed version to empty if binary does not exist
+  ansible.builtin.set_fact:
+    installed_version: ""
+  when: not linstor_gateway_stat.stat.exists
+
+- name: Download the latest release
+  ansible.builtin.get_url:
+    url: https://github.com/LINBIT/linstor-gateway/releases/download/{{ latest_tag.stdout }}/linstor-gateway-linux-amd64
+    dest: /usr/sbin/linstor-gateway
+    owner: root
+    group: root
+    mode: '0774'
+  when: "latest_tag.stdout not in installed_version"

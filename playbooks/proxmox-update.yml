@@ -1,0 +1,62 @@
+- name: A series of tasks for proxmox maintenance and updates
+  hosts: proxmox
+  serial: 1  # ✅ Runs all tasks for one host before moving to the next
+  remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
+  become: true
+  tasks:
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        autoremove: true
+
+    - name: Update Oh my posh
+      ansible.builtin.include_role:
+        name: oh-my-posh-apt
+
+    - name: Ensure nala is installed with alias
+      ansible.builtin.include_role:
+        name: nala
+
+    - name: Update to latest linstor-gateway version
+      ansible.builtin.include_role:
+        name: linstor-gateway-git
+
+    - name: Update to latest pve-fake-subscription version
+      ansible.builtin.include_role:
+        name: pve-fake-subscription-git
+
+    - name: If the intel_sriov flag is set for host install latest sr-iov drivers
+      ansible.builtin.include_role:
+        name: intel-igpu-sriov-git
+      when: (hostvars[inventory_hostname].intel_sriov | default(false) | bool)
+
+    - name: Get running kernel version
+      ansible.builtin.command: uname -r
+      register: running_kernel
+      changed_when: false
+
+    - name: Get latest installed kernel version
+      ansible.builtin.command: ls /usr/lib/modules
+      register: installed_kernels
+      changed_when: false
+
+    - name: Set latest kernel version (sorted)
+      ansible.builtin.set_fact:
+        latest_kernel: "{{ installed_kernels.stdout_lines | sort(attribute='split', reverse=true) | first }}"
+
+    - name: Determine if new kernel is installed
+      ansible.builtin.set_fact:
+        new_kernel_installed: "{{ running_kernel.stdout != latest_kernel }}"
+
+    - name: Reboot the system
+      ansible.builtin.reboot:
+        reboot_timeout: 600  # Adjust the timeout depending on how long the system takes to reboot
+        msg: "Rebooting the system now, waiting up to 600 seconds for it to be available again"
+      when: (new_kernel_installed | default(false) | bool)
+      register: reboot_result
+
+    - name: Notify user of reboot completion
+      ansible.builtin.debug:
+        msg: "The system has rebooted and is back online."
+      when: reboot_result is defined

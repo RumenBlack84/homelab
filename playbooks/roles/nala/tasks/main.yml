@@ -1,0 +1,24 @@
+- name: Install Nala instead of apt
+  ansible.builtin.apt:
+    name: nala
+    state: present
+    update_cache: true
+- name: Set Nala Alias
+  ansible.builtin.blockinfile:
+    path: /etc/bash.bashrc
+    marker: "# {mark} Nala configs"
+    block: |
+      apt() {
+        command nala "$@"
+      }
+      sudo() {
+        if [ "$1" = "apt" ]; then
+          shift
+          command sudo nala "$@"
+        else
+          command sudo "$@"
+        fi
+      }
+    owner: root
+    group: root
+    mode: '0644'

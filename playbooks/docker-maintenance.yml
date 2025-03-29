@@ -1,5 +1,6 @@
 - name: A series of tasks for docker maintenance (backup,update,prune,etc)
   hosts: docker
+  serial: 1  # ✅ Runs all tasks for one host before moving to the next
   remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
   become: true
   vars:
@@ -28,6 +29,8 @@
       ansible.builtin.file:
         path: "{{ backup_dir }}"
         state: directory
+        owner: "{{ hostvars[inventory_hostname].ansible_user }}"
+        group: "{{ hostvars[inventory_hostname].ansible_user }}"
         mode: '0755'
 
     - name: Backup /appdata
@@ -37,6 +40,8 @@
         format: gz
         remove: false
         mode: '0744'
+        owner: "{{ hostvars[inventory_hostname].ansible_user }}"
+        group: "{{ hostvars[inventory_hostname].ansible_user }}"
 
     - name: Bring stacks back up
       community.docker.docker_compose_v2:

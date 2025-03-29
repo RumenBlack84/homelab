@@ -7,29 +7,6 @@
     state: present
     update_cache: true
 
-- name: Set bashrc file for root
-  ansible.builtin.blockinfile:
-    path: /root/.bashrc
-    marker: "# {mark} Ansible managed block for custom functions"
-    block: |
-      apt() {
-        command nala "$@"
-      }
-      sudo() {
-        if [ "$1" = "apt" ]; then
-          shift
-          command sudo nala "$@"
-        else
-          command sudo "$@"
-        fi
-      }
-      eval "$(oh-my-posh init bash --config https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/refs/heads/main/themes/devious-diamonds.omp.yaml)"
-      alias neofetch=fastfetch
-      neofetch
-    owner: root
-    group: root
-    mode: '0644'
-
 - name: Gather package facts
   ansible.builtin.package_facts:
     manager: apt

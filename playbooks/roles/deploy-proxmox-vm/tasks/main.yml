@@ -1,0 +1,37 @@
+---
+- name: Save hostvars as shorter vars to prevent line too long errors later on
+  ansible.builtin.set_fact:
+    bridge: "{{ hostvars[inventory_hostname].interface }}"
+    subnet: "{{ hostvars[inventory_hostname].subnet }}"
+    ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    gw: "{{ hostvars[inventory_hostname].gateway }}"
+
+- name: Clone VM with source vmid and target newid and raw format
+  community.general.proxmox_kvm:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    clone: "{{ hostvars[inventory_hostname].template }}"
+    name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+    node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    storage: "{{ hostvars[inventory_hostname].storage }}"
+    sshkeys: "{{ ssh.pub_key }}"
+    ciupgrade: true
+    ciuser: "{{ hostvars[inventory_hostname].ansible_user }}"
+    cipassword: "{{ cloudinit.ci_password }}"
+    citype: "nocloud"
+    # ensure this is set
+    ipconfig:
+      ipconfig0: "{{ ip }}{{ subnut }}"
+    timeout: 300
+
+- name: Update existing disk
+  community.general.proxmox_disk:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+    disk: scsi0
+    size: "{{ hostvars[inventory_hostname].size }}"
+    backup: true
+    state: resized

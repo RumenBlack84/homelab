@@ -160,7 +160,6 @@
 - name: Execute updater as tdarr user
   ansible.builtin.command: /opt/Tdarr/Tdarr_Updater
   become: true
-  become_user: tdarr
   changed_when: false # script will take care of checking to see if there's a new version
 
 - name: Copy tdarr-node service to hosts with node flag set

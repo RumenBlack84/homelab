@@ -144,6 +144,9 @@
   ansible.builtin.unarchive:
     src: /tmp/Tdarr_updater.zip
     dest: /opt/Tdarr
+    owner: root
+    group: root
+    mode: '0770'
     remote_src: true
 
 - name: Set permissions on extracted files
@@ -163,6 +166,8 @@
 - name: Copy tdarr-node service to hosts with node flag set
   ansible.builtin.copy:
     src: tdarr-node.service.j2
+    owner: root
+    group: root
     dest: /etc/systemd/system/tdarr-node.service
     mode: '0774'
   when: tdarr_node | default(false)
@@ -172,6 +177,8 @@
     src: tdarr-server.service.j2
     dest: /etc/systemd/system/tdarr-server.service
     mode: '0774'
+    owner: root
+    group: root
   when: tdarr_server | default(false)
 
 - name: Enable and start tdarr-node service for nodes with flag set

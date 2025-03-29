@@ -22,13 +22,13 @@
     state: directory
     owner: root
     group: root
-    mode: '0644'
+    mode: '0755'
 
 - name: Download Oh My Posh Theme
   ansible.builtin.get_url:
     url: "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/refs/heads/main/themes/devious-diamonds.omp.yaml"
     dest: /opt/oh-my-posh-themes/devious-diamonds.omp.yaml
-    mode: '0644'
+    mode: '0755'
 
 - name: Set Oh my posh configs globally
   ansible.builtin.blockinfile:
@@ -40,4 +40,4 @@
       fastfetch
     owner: root
     group: root
-    mode: '0644'
+    mode: '0755'

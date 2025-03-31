@@ -48,3 +48,8 @@
     api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
     name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
     state: started
+
+- name: Wait for the VM to be fully Deployed
+  delegate_to: localhost
+  ansible.builtin.wait_for:
+    timeout: 120 # values a bit high but *shrug* just in case

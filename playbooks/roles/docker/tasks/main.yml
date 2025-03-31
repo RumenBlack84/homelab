@@ -47,7 +47,7 @@
 - name: Install docker for arch distros
   when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
   block:
-    - name: Ensure dependancies are installed
+    - name: Install Docker
       community.general.pacman:
         name:
           - docker

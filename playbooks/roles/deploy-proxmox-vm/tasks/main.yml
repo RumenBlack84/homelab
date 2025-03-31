@@ -39,3 +39,11 @@
     size: "{{ hostvars[inventory_hostname].size }}"
     backup: true
     state: resized
+
+- name: Start VM
+  community.general.proxmox_kvm:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+    state: started

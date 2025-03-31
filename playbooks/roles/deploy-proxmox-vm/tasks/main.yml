@@ -31,12 +31,18 @@
     ciuser: "{{ hostvars[inventory_hostname].ansible_user }}"
     cipassword: "{{ cloudinit.ci_password }}"
     citype: "nocloud"
-    # ensure this is set
-    net:
-      net0: "virtio,bridge={{ bridge }}"
-    ipconfig:
-      ipconfig0: "{{ ipconfig0_string }}"
     timeout: 300
+  register: clone_result
+
+- name: Debug New VMID
+  ansible.builtin.debug:
+    msg: "New vmid: {{ clone_result.vmid }}"
+
+- name: Set IP config
+  delegate_to: localhost
+  ansible.builtin.command: >
+    qm set {{ clone_result.vmid }} --ipconfig0 "{{ ipconfig0_string }}"
+  changed_when: false # if the command fails she fails
 
 - name: Update existing disk
   delegate_to: localhost

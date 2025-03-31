@@ -35,13 +35,12 @@
   register: clone_result
 
 - name: Debug New VMID
-  delegate_to: "{{ hostvars[inventory_hostname].proxmox_host }}"
-  remote_user: root
   ansible.builtin.debug:
     msg: "New vmid: {{ clone_result.vmid }}"
 
 - name: Set IP config
-  delegate_to: localhost
+  delegate_to: "{{ hostvars[inventory_hostname].proxmox_host }}"
+  remote_user: root
   ansible.builtin.command: >
     qm set {{ clone_result.vmid }} --ipconfig0 "{{ ipconfig0_string }}"
   changed_when: false # if the command fails she fails

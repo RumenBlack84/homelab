@@ -55,6 +55,15 @@
         state: present
         update_cache: true
 
+- name: Enable and start docker services
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name:
+      - docker.socket
+      - docker.service
+    enabled: true
+    state: started
+
 - name: Add user to the docker group
   ansible.builtin.user:
     name: "{{ hostvars[inventory_hostname].ansible_user }}"

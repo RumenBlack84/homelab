@@ -73,7 +73,7 @@
 
 - name: Generate Docker Compose file for each stack
   ansible.builtin.template:
-    src: "docker-compose/{{ item.key }}/docker-compose.yml"
+    src: "docker-compose/{{ item.key }}/docker-compose.yaml"
     dest: "/home/{{ hostvars[inventory_hostname].ansible_user }}/docker-compose/{{ item.key }}/docker-compose.yaml"
     owner: "{{ hostvars[inventory_hostname].ansible_user }}"
     group: "{{ hostvars[inventory_hostname].ansible_user }}"

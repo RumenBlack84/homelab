@@ -15,7 +15,8 @@
     api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
     clone: "{{ hostvars[inventory_hostname].template }}"
     name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
-    node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    node: "Aesir" # Should variablize this later but this needs to be where the vm template lives
+    target: "{{ hostvars[inventory_hostname].proxmox_host }}"
     storage: "{{ hostvars[inventory_hostname].storage }}"
     sshkeys: "{{ ssh.pub_key }}"
     ciupgrade: true

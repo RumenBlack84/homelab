@@ -24,7 +24,7 @@
     citype: "nocloud"
     # ensure this is set
     ipconfig:
-      ipconfig0: "{{ ip }}{{ subnut }}"
+      ipconfig0: "ip={{ ip }}{{ subnet }},gw={{ gw }}"
     timeout: 300
 
 - name: Update existing disk

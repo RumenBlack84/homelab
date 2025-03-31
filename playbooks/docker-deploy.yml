@@ -1,0 +1,31 @@
+---
+- name: Deplopy docker
+  hosts: Orca # just for now to deploy new docker only
+  gather_facts: false
+  remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
+  become: true
+  vars_files:
+    - vault/vault.yml
+  vars:
+    ansible_shell_executable: /bin/bash  # Use bash as the default shell
+    ansible_ssh_pipelining: true
+  tasks:
+    - name: Run deploy-proxmox-container to ensure the required LXC exists
+      ansible.builtin.include_role:
+        name: deploy-proxmox-vm
+      when: (hostvars[inventory_hostname].vm | default(false) | bool)
+
+    - name: Run deploy-proxmox-container to ensure the required LXC exists
+      ansible.builtin.include_role:
+        name: deploy-proxmox-container
+      when: (hostvars[inventory_hostname].lxc | default(false) | bool)
+
+    - name: Run docker role
+      ansible.builtin.include_role:
+        name: docker
+      when: (hostvars[inventory_hostname].docker_enabled | default(false) | bool)
+
+    - name: Run the arch-update role to update and prep arch based systems
+      ansible.builtin.include_role:
+        name: oh-my-posh-arch
+      when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"

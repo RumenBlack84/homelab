@@ -1,41 +1,59 @@
 ---
-- name: Ensure directory for keyrings exists
-  ansible.builtin.file:
-    path: /etc/apt/keyrings
-    state: directory
-    mode: '0755'
+- name: Debug Ostype value
+  ansible.builtin.debug:
+    msg: "Ostype is: {{ hostvars[inventory_hostname].ostype | default(none) }}"
 
-- name: Download Docker Repo key
-  ansible.builtin.get_url:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    dest: /etc/apt/keyrings/docker.asc
-    mode: '0644'
+- name: Install docker for apt based distros
+  when: (hostvars[inventory_hostname].ostype | default('')) in ["ubuntu", "debian"]
+  block:
+    - name: Ensure directory for keyrings exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
 
-- name: Add Docker repository to sources list
-  ansible.builtin.copy:
-    content: >
-      deb [arch=amd64
-      signed-by=/etc/apt/keyrings/docker.asc]
-      https://download.docker.com/linux/ubuntu
-      {{ ansible_lsb.codename }} stable
-    dest: /etc/apt/sources.list.d/docker.list
-    owner: root
-    group: root
-    mode: '0644'
+    - name: Download Docker Repo key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
 
-- name: Install Docker packages
-  ansible.builtin.apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-buildx-plugin
-      - docker-compose-plugin
-      - apt-transport-https
-      - curl
-      - ca-certificates
-    state: present
-    update_cache: true
+    - name: Add Docker repository to sources list
+      ansible.builtin.copy:
+        content: >
+          deb [arch=amd64
+          signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/ubuntu
+          {{ ansible_lsb.codename }} stable
+        dest: /etc/apt/sources.list.d/docker.list
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+          - apt-transport-https
+          - curl
+          - ca-certificates
+        state: present
+        update_cache: true
+
+- name: Install docker for arch distros
+  when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+  block:
+    - name: Ensure dependancies are installed
+      community.general.pacman:
+        name:
+          - docker
+          - docker-compose
+        state: present
+        update_cache: true
 
 - name: Add user to the docker group
   ansible.builtin.user:

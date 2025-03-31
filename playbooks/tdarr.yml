@@ -24,7 +24,7 @@
 
     - name: Run the arch-update role to update and prep arch based systems
       ansible.builtin.include_role:
-        name: oh-my-posh-arch
+        name: arch-update
       when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
 
     - name: Run the oh my posh role for apt systems so we can have a pretty cli

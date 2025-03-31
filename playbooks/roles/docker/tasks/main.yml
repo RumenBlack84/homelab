@@ -58,9 +58,7 @@
 - name: Enable and start docker services
   ansible.builtin.systemd:
     daemon_reload: true
-    name:
-      - docker.socket
-      - docker.service
+    name: docker
     enabled: true
     state: started
 

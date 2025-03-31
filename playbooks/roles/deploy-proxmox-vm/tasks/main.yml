@@ -35,6 +35,8 @@
   register: clone_result
 
 - name: Debug New VMID
+  delegate_to: "{{ hostvars[inventory_hostname].proxmox_host }}"
+  remote_user: root
   ansible.builtin.debug:
     msg: "New vmid: {{ clone_result.vmid }}"
 

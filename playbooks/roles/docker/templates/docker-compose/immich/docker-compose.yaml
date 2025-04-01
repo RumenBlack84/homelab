@@ -6,8 +6,6 @@ services:
     volumes:
       - /appdata/immich_media:/usr/src/app/upload
       - /etc/localtime:/etc/localtime:ro
-    env_file:
-      - .env
     ports:
       - '2283:2283'
     depends_on:

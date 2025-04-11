@@ -1,5 +1,5 @@
 - name: A series of tasks for proxmox maintenance and updates
-  hosts: proxmox
+  hosts: PBS
   serial: 1  # ✅ Runs all tasks for one host before moving to the next
   remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
   become: true
@@ -21,6 +21,7 @@
     - name: Update to latest linstor-gateway version
       ansible.builtin.include_role:
         name: linstor-gateway-git
+      when: (hostvars[inventory_hostname].linstor | default(false) | bool)
 
     - name: Update to latest pve-fake-subscription version
       ansible.builtin.include_role:

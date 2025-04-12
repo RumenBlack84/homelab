@@ -62,15 +62,39 @@
     - (hostvars[inventory_hostname].vm | default(false) | bool)
     - not (vm_exists | default(true) | bool)
 
-- name: Debug New VMID
+- name: Set VMID if VM already exsits
+  set_fact:
+    vmid: "{{ vm_info.proxmox_vms[0].vmid }}"
+  when:
+    - (vm_exists | default(true) | bool)
+
+- name: Set VMID if VM doesnt exist
+  set_fact:
+    vmid: "{{ clone_result.vmid }}"
+  when:
+    - not (vm_exists | default(true) | bool)
+
+- name: Debug VMID
   ansible.builtin.debug:
-    msg: "New vmid: {{ clone_result.vmid }}"
+    msg: "New vmid: {{ vmid }}"
+
+- name: Set target node if VM already exsits
+  set_fact:
+    proxmox_node: "{{ vm_info.proxmox_vms[0].node }}"
+  when:
+    - (vm_exists | default(true) | bool)
+
+- name: Set target node if VM doesnt exist
+  set_fact:
+    proxmox_node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+  when:
+    - not (vm_exists | default(true) | bool)
 
 - name: Set IP config
-  delegate_to: "{{ hostvars[inventory_hostname].proxmox_host }}"
+  delegate_to: "{{ proxmox_node }}"
   remote_user: root
   ansible.builtin.command: >
-    qm set {{ clone_result.vmid }} --ipconfig0 "{{ ipconfig0_string }}"
+    qm set {{ vmid }} --ipconfig0 "{{ ipconfig0_string }}"
   changed_when: false # if the command fails she fails
 
 - name: Update existing disk
@@ -78,7 +102,7 @@
   community.general.proxmox_disk:
     api_user: "{{ proxmox.api_user }}"
     api_password: "{{ proxmox.api_password }}"
-    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    api_host: "{{ proxmox_node }}"
     name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
     disk: scsi0
     size: "{{ hostvars[inventory_hostname].size }}"
@@ -90,7 +114,7 @@
   community.general.proxmox_kvm:
     api_user: "{{ proxmox.api_user }}"
     api_password: "{{ proxmox.api_password }}"
-    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    api_host: "{{ proxmox_node }}"
     name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
     state: started
 

@@ -122,3 +122,5 @@
   delegate_to: localhost
   ansible.builtin.wait_for:
     timeout: 120 # values a bit high but *shrug* just in case
+  when:
+    - not (vm_exists | default(true) | bool)

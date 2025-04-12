@@ -10,7 +10,7 @@
     ansible_shell_executable: /bin/bash  # Use bash as the default shell
     ansible_ssh_pipelining: true
   tasks:
-    - name: Run deploy-proxmox-container to ensure the required LXC exists
+    - name: Run deploy-proxmox-container to ensure the required VM exists
       ansible.builtin.include_role:
         name: deploy-proxmox-vm
       when: (hostvars[inventory_hostname].vm | default(false) | bool)

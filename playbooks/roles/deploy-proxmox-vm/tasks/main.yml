@@ -1,4 +1,29 @@
 ---
+- name: Check if VM exists first
+  delegate_to: localhost
+  community.general.proxmox_vm_info:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+  register: vm_info
+  ignore_errors: true  # ✅ Avoids playbook failure if container doesn't exist
+
+- name: Debug vm_info
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "Checking if VM exists: {{ vm_info }}"
+
+- name: Set a fact for VM existence
+  delegate_to: localhost
+  ansible.builtin.set_fact:
+    vm_exists: "{{ vm_info.failed | default(false) | bool }}"
+
+- name: Debug vm_info
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "VM Exists: {{ vm_exists }}"
+
 - name: Save hostvars as shorter vars to prevent line too long errors later on
   delegate_to: localhost
   ansible.builtin.set_fact:
@@ -33,6 +58,9 @@
     citype: "nocloud"
     timeout: 300
   register: clone_result
+  when:
+    - (hostvars[inventory_hostname].vm | default(false) | bool)
+    - not (vm_exists | default(true) | bool)
 
 - name: Debug New VMID
   ansible.builtin.debug:

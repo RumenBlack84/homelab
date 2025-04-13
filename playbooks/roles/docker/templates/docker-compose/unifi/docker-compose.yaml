@@ -5,6 +5,8 @@ networks:
 services:
   unifi-mongo:
     image: mongo:${MONGO_VERSION:-8}    # Required MONGO_VERSION, Default "8", specify whatever Mongo version tag you need. DO NOT set 'latest' tag
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
     container_name: unifi-mongo
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-root}                    # Required only if using mongodb version < 6.0, otherwise do not set (See official Mongo image)
@@ -12,8 +14,11 @@ services:
       - MONGO_USER=${MONGO_USER:-unifi}                     # Default "unifi"
       - MONGO_PASS=${MONGO_PASS:?Mongo Password Required}   # Required
       - MONGO_DBNAME=${MONGO_DBNAME:-unifi}                 # Default "unifi"
+      - MONGO_AUTHSOURCE=${MONGO_AUTHSOURCE}
     volumes:
       - /appdata/unifi/mongodb_data:/data/db
+# use init script on first run to prep database
+#      - /home/bgrant/docker-compose/unifi/init-mongo.sh:/docker-entrypoint-initdb.d/init-mongo.sh:ro
     networks:
       unifi:
     restart: unless-stopped

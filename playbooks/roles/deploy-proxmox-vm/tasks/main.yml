@@ -36,7 +36,7 @@
   ansible.builtin.set_fact:
     ipconfig0_string: "ip={{ ip }}{{ subnet }},gw={{ gw }}"
 
-- name: Debug pconfig0 string
+- name: Debug ipconfig0 string
   ansible.builtin.debug:
     msg: "ipconfig0_string is: {{ ipconfig0_string }}"
 

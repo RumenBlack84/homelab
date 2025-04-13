@@ -1,5 +1,23 @@
 ---
-# Debian or Ubuntu, apt based.
+- name: Check if Container exists first
+  delegate_to: localhost
+  community.general.proxmox_vm_info:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+  register: container_info
+  ignore_errors: true  # ✅ Avoids playbook failure if container doesn't exist
+
+- name: Debug container_info
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "Checking if container exists: {{ container_info }}"
+
+- name: Set VMID fact
+  set_fact:
+    vmid: "{{ container_info.proxmox_vms[0].vmid }}"
+
 - name: Save hostvars as shorter vars to prevent line too long errors later on
   ansible.builtin.set_fact:
     bridge: "{{ hostvars[inventory_hostname].interface }}"
@@ -21,10 +39,6 @@
     cpuunits: "{{ hostvars[inventory_hostname].cpuunits | default(100) | int }}"
     memory: "{{ hostvars[inventory_hostname].memory }}"
     onboot: "{{ hostvars[inventory_hostname].onboot | default(false) | bool }}"
-    mount_volumes:
-      - id: "mp0"
-        host_path: "/mnt/pve/BulkPoolShared"
-        mountpoint: "/mnt/shared"
     features:
       - nesting=1
       - keyctl=1
@@ -32,6 +46,17 @@
       net0: "name=eth0,gw={{ gw }},ip={{ ip }}{{ subnet }},bridge={{ bridge }}"
     timeout: 240
     tags: "{{ hostvars[inventory_hostname].tags }}"
+  when:
+    - (hostvars[inventory_hostname].lxc | default(false) | bool)
+
+- name: Add lxc.mount.entry lines to container config
+  delegate_to: "{{ hostvars[inventory_hostname].proxmox_host }}"
+  ansible.builtin.blockinfile:
+    path: "/etc/pve/lxc/{{ hostvars[inventory_hostname].vmid }}.conf"
+    marker: "# {mark} ANSIBLE MANAGED MOUNTS"
+    block: |
+      lxc.mount.entry = /mnt/pve/BulkPoolShared mnt/shared none bind,create=dir 0 0
+      lxc.mount.entry = /mnt/pve/Transcode mnt/transcoding none bind,create=dir 0 0
   when:
     - (hostvars[inventory_hostname].lxc | default(false) | bool)
 

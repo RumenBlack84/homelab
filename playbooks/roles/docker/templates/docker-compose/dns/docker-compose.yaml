@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
+networks:
+  dns:
+services:
+  db:
+    image: mariadb:11.4
+    container_name: pdns-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${pdns_sql_rootpass}
+      MYSQL_DATABASE: pdns
+      MYSQL_USER: ${pdns_sql_user}
+      MYSQL_PASSWORD: ${pdns_sql_password}
+    volumes:
+      - /appdata/dns/sql_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      dns:
+  pdns:
+    image: pschiffe/pdns-mysql
+    container_name: pdns-auth
+    depends_on:
+      - db
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8081:8081" # PDNS API port
+    environment:
+      PDNS_gmysql_host: db
+      PDNS_gmysql_user: ${pdns_sql_user}
+      PDNS_gmysql_password: ${pdns_sql_password}
+      PDNS_gmysql_dbname: pdns
+      PDNS_api: "yes"
+      PDNS_api_key: ${pdns_apikey}
+      PDNS_master: "yes"
+      PDNS_webserver: "yes"
+      PDNS_webserver_address: "0.0.0.0"
+      PDNS_webserver_allow_from: "0.0.0.0/0"
+      PDNS_webserver_password: ${pdns_webserver_password}
+    restart: unless-stopped
+    networks:
+      dns:
+
+  pdns-recursor:
+    image: pschiffe/pdns-recursor
+    container_name: pdns-recursor
+    ports:
+      - "5353:53/tcp"
+      - "5353:53/udp"
+    restart: unless-stopped
+    networks:
+      dns:
+
+  pdns-admin:
+    image: ngoduykhanh/powerdns-admin
+    container_name: pdns-admin
+    depends_on:
+      - db
+    ports:
+      - "9191:80"
+    environment:
+      - SQLALCHEMY_DATABASE_URI=mysql+pymysql://${pdns_sql_user}:${pdns_sql_password}@db/pdns
+      - PDNS_API_URL=http://pdns-auth:8081
+      - PDNS_API_KEY=${pdns_apikey}
+      - ADMIN_PASSWORD=${pdns_webserver_password}
+    restart: unless-stopped
+    networks:
+      dns:

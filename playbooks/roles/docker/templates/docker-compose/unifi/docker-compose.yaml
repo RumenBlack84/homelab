@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
 networks:
   # proxy-network: # optional, Use this network or your own if you intend to configure the unifi-network-application container through a revers proxy, otherwise not needed.
     # external: true

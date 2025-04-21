@@ -117,6 +117,22 @@
     upgrade: true
   when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
 
+- name: Ensure libtesseract.so.4 symlink exists
+  ansible.builtin.file:
+    src: /usr/lib/libtesseract.so.5
+    dest: /usr/lib/libtesseract.so.4
+    state: link
+    force: true  # Overwrite if something else is there
+  when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
+- name: Ensure liblept.so.5 symlink exists
+  ansible.builtin.file:
+    src: /usr/lib/libleptonica.so.6
+    dest: /usr/lib/liblept.so.5
+    state: link
+    force: true
+  when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
 - name: Download The Tdarr updater
   ansible.builtin.get_url:
     url: "{{ updater_link }}"

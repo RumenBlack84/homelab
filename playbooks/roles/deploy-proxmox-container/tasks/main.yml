@@ -53,7 +53,7 @@
     netif:
       net0: "name=eth0,gw={{ gw }},ip={{ ip }}{{ subnet }},bridge={{ bridge }}"
     timeout: 240
-    tags: "{{ hostvars[inventory_hostname].tags | default('untagged') }}"
+    tags: "{{ hostvars[inventory_hostname].proxmox_tags | default([]) }}"
     state: present
   when:
     - (hostvars[inventory_hostname].lxc | default(false) | bool)

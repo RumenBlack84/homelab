@@ -56,7 +56,7 @@
     ciuser: "{{ hostvars[inventory_hostname].ansible_user }}"
     cipassword: "{{ cloudinit.ci_password }}"
     citype: "nocloud"
-    tags: "{{ hostvars[inventory_hostname].tags | default([]) }}"
+    tags: "{{ hostvars[inventory_hostname].proxmox_tags | default([]) }}"
     cpuunits: "{{ hostvars[inventory_hostname].cpuunits | default(100) | int }}"
     timeout: 300
   register: clone_result

@@ -46,6 +46,8 @@
     - /root/.ssh/authorized_keys
 
 - name: Ensure reboot-arch-btw is installed
+  become: true
+  become_user: aur_builder
   kewlfft.aur.aur:
     use: yay
     name:

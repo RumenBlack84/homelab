@@ -14,7 +14,7 @@ WorkingDirectory=/opt/Tdarr/Tdarr_Server
 # Change to the correct path
 ExecStart=/opt/Tdarr/Tdarr_Server/Tdarr_Server
 TimeoutStopSec=20
-KillMode=process
+KillMode=control-group
 Restart=on-failure
 
 [Install]

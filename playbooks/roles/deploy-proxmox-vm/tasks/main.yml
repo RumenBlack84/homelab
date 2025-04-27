@@ -24,6 +24,20 @@
   ansible.builtin.debug:
     msg: "VM Exists: {{ vm_exists }}"
 
+- name: Check if the Clone template exists and get its stats
+  delegate_to: localhost
+  community.general.proxmox_vm_info:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    name: "{{ hostvars[inventory_hostname].template }}"
+  register: clone_info
+
+- name: Debug clone_info
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "Checking if the Clone Template exists: {{ clone_info }}"
+
 - name: Save hostvars as shorter vars to prevent line too long errors later on
   delegate_to: localhost
   ansible.builtin.set_fact:
@@ -99,17 +113,26 @@
     qm set {{ vmid }} --ipconfig0 "{{ ipconfig0_string }}"
   changed_when: false # if the command fails she fails
 
-- name: Update existing disk
-  delegate_to: localhost
-  community.general.proxmox_disk:
-    api_user: "{{ proxmox.api_user }}"
-    api_password: "{{ proxmox.api_password }}"
-    api_host: "{{ proxmox_node }}"
-    name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
-    disk: scsi0
-    size: "{{ hostvars[inventory_hostname].size }}"
-    backup: true
-    state: resized
+- name: Attempt to resize disk
+  block:
+    - name: Update existing disk
+      delegate_to: localhost
+      community.general.proxmox_disk:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ proxmox_node }}"
+        name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
+        disk: scsi0
+        size: "{{ hostvars[inventory_hostname].size }}"
+        backup: true
+        state: resized
+      register: resize_disk_info
+  rescue:
+    - name: Handle disk resize failure gracefully
+      debug:
+        msg: |
+          Disk resize failed — continuing anyway.
+          Resize Disk Result: {{ resize_disk_info }}"
 
 - name: Start VM
   delegate_to: localhost

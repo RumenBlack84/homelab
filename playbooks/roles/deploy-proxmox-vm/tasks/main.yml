@@ -99,6 +99,13 @@
   when:
     - not (vm_exists | default(true) | bool)
 
+- name: Set IP config
+  delegate_to: "{{ proxmox_node }}"
+  remote_user: root
+  ansible.builtin.command: >
+    qm set {{ vmid }} --ipconfig0 "{{ ipconfig0_string }}"
+  changed_when: false # if the command fails she fails
+
 # Ensure values match inventory some of these cannot be added on clone
 - name: Update VM settings after clone
   delegate_to: localhost
@@ -111,13 +118,12 @@
     cpuunits: "{{ hostvars[inventory_hostname].cpuunits | default(100) | int }}"
     tags: "{{ hostvars[inventory_hostname].proxmox_tags | default([]) }}"
     sshkeys: "{{ ssh.pub_key }}"
+    memory: "{{ hostvars[inventory_hostname].memory }}" 
     ciupgrade: true
     ciuser: "{{ hostvars[inventory_hostname].ansible_user }}"
     cipassword: "{{ cloudinit.ci_password }}"
     citype: "nocloud"
     state: present
-    ipconfig:
-      ipconfig0: "{{ ipconfig0_string }}"
 
 - name: Attempt to resize disk
   block:

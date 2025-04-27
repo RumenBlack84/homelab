@@ -45,9 +45,30 @@
     - /home/bgrant/.ssh/authorized_keys
     - /root/.ssh/authorized_keys
 
+- name: Ensure reboot-arch-btw is installed
+  kewlfft.aur.aur:
+    use: yay
+    name:
+      - reboot-arch-btw
+    state: present
+
 - name: Upgrade the system using yay
   become: true
   become_user: aur_builder
   kewlfft.aur.aur:
     upgrade: true
     use: yay
+
+- name: Check if reboot is required
+  ansible.builtin.command: reboot-arch-btw
+  register: reboot_check
+  changed_when: false
+
+- name: Set reboot_required fact
+  ansible.builtin.set_fact:
+    reboot_required: "{{ 'Reboot arch btw' in reboot_check.stdout }}"
+
+- name: Reboot if required
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+  when: reboot_required

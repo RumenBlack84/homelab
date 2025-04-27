@@ -93,6 +93,12 @@
   when:
     - (vm_exists | default(true) | bool)
 
+- name: Record VM status
+  set_fact:
+    vm_status: "{{ vm_info.proxmox_vms[0].status }}"
+  when:
+    - (vm_exists | default(true) | bool)
+
 - name: Set target node if VM doesnt exist
   set_fact:
     proxmox_node: "{{ hostvars[inventory_hostname].proxmox_host }}"
@@ -157,6 +163,8 @@
     api_host: "{{ proxmox_node }}"
     name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
     state: started
+  when:
+    - running not in vm_status
 
 - name: Wait for the VM to be fully Deployed
   delegate_to: localhost

@@ -22,6 +22,11 @@
         name: deploy-proxmox-container
       when: (hostvars[inventory_hostname].lxc | default(false) | bool)
 
+    - name: Run deploy-proxmox-vm to ensure the required VM exists
+      ansible.builtin.include_role:
+        name: deploy-proxmox-vm
+      when: (hostvars[inventory_hostname].vm | default(false) | bool)
+
     - name: Run the arch-update role to update and prep arch based systems
       ansible.builtin.include_role:
         name: arch-update

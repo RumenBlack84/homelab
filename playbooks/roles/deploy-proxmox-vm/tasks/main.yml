@@ -48,7 +48,7 @@
     api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
     clone: "{{ hostvars[inventory_hostname].template }}"
     name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
-    node: "Aesir" # Should variablize this later but this needs to be where the vm template lives
+    node: "{{ clone_home }}"
     target: "{{ hostvars[inventory_hostname].proxmox_host }}"
     storage: "{{ hostvars[inventory_hostname].storage }}"
     sshkeys: "{{ ssh.pub_key }}"
@@ -56,6 +56,8 @@
     ciuser: "{{ hostvars[inventory_hostname].ansible_user }}"
     cipassword: "{{ cloudinit.ci_password }}"
     citype: "nocloud"
+    tags: "{{ hostvars[inventory_hostname].tags | default([]) }}"
+    cpuunits: "{{ hostvars[inventory_hostname].cpuunits | default(100) | int }}"
     timeout: 300
   register: clone_result
   when:

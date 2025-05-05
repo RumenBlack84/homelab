@@ -1,4 +1,4 @@
----
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
 services:
   radarr:
     image: hotio/radarr:latest
@@ -73,16 +73,26 @@ services:
       - TZ=America/New_York
     ports:
       - 8181:8181
+  huntarr:
+    image: huntarr/huntarr:latest
+    container_name: huntarr
+    restart: always
+    ports:
+      - "9705:9705"
+    volumes:
+      - /appdata/huntarr_data:/config
+    environment:
+      - TZ=America/New_York
 volumes:
   media:
     driver: local
     driver_opts:
       type: nfs
-      o: "addr={{ docker.nas_ip }},rw,nfsvers=4.2,nconnect=8"
+      o: "addr={{ docker.nas_ip }},rw,nfsvers=4.2,nconnect=4"
       device: ":/srv/gateway-exports/nfs/Media"
   downloads:
     driver: local
     driver_opts:
       type: nfs
-      o: "addr={{ docker.nas_ip }},rw,nfsvers=4.2,nconnect=8"
-      device: ":/srv/gateway-exports/nfs/Downloads"
+      o: "addr=192.168.0.78,rw,vers=4.2,nconnect=4,rsize=1048576,wsize=1048576,timeo=600,retrans=2"
+      device: ":/exports/downloads"

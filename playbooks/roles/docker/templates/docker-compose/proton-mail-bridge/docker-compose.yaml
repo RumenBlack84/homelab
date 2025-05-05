@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
 services:
   protonmail-bridge:
     image: shenxn/protonmail-bridge
@@ -7,3 +8,4 @@ services:
     restart: unless-stopped
     volumes:
       - /appdata/protonmail_data:/root
+

@@ -141,7 +141,7 @@
   # We are using 0555 to ensure that if the lxc/nfs mounts are not set that nothing can write there.
   # This way we prevent a mount error filling up to small rootdir
   ansible.builtin.file:
-    path: /mnt/shared
+    path: /mnt/shared/Media
     state: directory
     mode: '0555'
 
@@ -167,7 +167,7 @@
 - name: Mount Media dir and ensure its remounted on boot
   ansible.posix.mount:
     src: 192.168.0.252:/srv/gateway-exports/nfs/Media
-    path: /mnt/shared
+    path: /mnt/shared/Media
     opts: rw,vers=4.2,nconnect=4,rsize=1048576,wsize=1048576,timeo=600,retrans=2
     state: mounted
     fstype: nfs

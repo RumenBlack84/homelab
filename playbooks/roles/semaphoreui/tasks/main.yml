@@ -1,0 +1,220 @@
+---
+# Apt Based
+- name: Install required packages if apt based
+  ansible.builtin.apt:
+    name:
+      - jq
+      - mariadb-server
+      - mariadb-client
+      - python3-pymysql
+      - python3
+      - python3-pip
+    state: present
+    update_cache: true
+  when: (hostvars[inventory_hostname].ostype | default('')) in ["ubuntu", "debian"]
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+    autoremove: true
+  when: (hostvars[inventory_hostname].ostype | default('')) in ["ubuntu", "debian"]
+
+# Arch BTW
+- name: Install the rest of the packages for Arch
+  community.general.pacman:
+    name:
+      - jq
+      - mariadb-lts
+      - python-pymysql
+      - mariadb-lts-clients
+      - python
+      - python-pip
+    state: present
+    update_cache: true
+  when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
+- name: Ensure all packages are up to date
+  community.general.pacman:
+    upgrade: true
+  when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
+- name: Ensure the service user exists
+  ansible.builtin.user:
+    name: semaphore
+    system: true
+    shell: /usr/sbin/nologin
+    home: /home/semaphore
+    create_home: true
+
+- name: Enable and start Mariadb service for nodes with flag set
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: mariadb
+    enabled: true
+    state: started
+
+- name: Set root password and ensure root@localhost exists
+  community.mysql.mysql_user:
+    login_user: root
+    login_password: ''
+    name: root
+    host: localhost
+    password: "{{ semaphoreui.mysql_root_password }}"
+    check_implicit_admin: true
+    state: present
+  when: not ansible_check_mode
+
+- name: Remove anonymous users
+  community.mysql.mysql_user:
+    name: ''
+    host_all: true
+    login_user: root
+    login_password: "{{ semaphoreui.mysql_root_password }}"
+    state: absent
+
+- name: Disallow remote root login
+  community.mysql.mysql_user:
+    name: root
+    host: "{{ item }}"
+    login_user: root
+    login_password: "{{ semaphoreui.mysql_root_password }}"
+    state: absent
+  loop:
+    - '%'
+    - '127.0.0.1'
+    - '::1'
+  when: item != 'localhost'
+
+- name: Remove test database
+  community.mysql.mysql_db:
+    name: test
+    state: absent
+    login_user: root
+    login_password: "{{ semaphoreui.mysql_root_password }}"
+
+- name: Reload privilege tables (flush privileges)
+  community.mysql.mysql_query:
+    query: "FLUSH PRIVILEGES;"
+    login_user: root
+    login_password: "{{ semaphoreui.mysql_root_password }}"
+
+- name: Create semaphore_db
+  community.mysql.mysql_db:
+    name: semaphore_db
+    state: present
+    login_user: root
+    login_password: "{{ semaphoreui.mysql_root_password }}"
+
+- name: Grant all privileges on semaphore_db to semaphore_user@localhost
+  community.mysql.mysql_user:
+    name: semaphore_user
+    host: localhost
+    password: "password"
+    priv: "semaphore_db.*:ALL"
+    state: present
+    login_user: root
+    login_password: "{{ semaphoreui.mysql_root_password }}"
+
+- name: Reload privilege tables (flush privileges)
+  community.mysql.mysql_query:
+    query: "FLUSH PRIVILEGES;"
+    login_user: root
+    login_password: "{{ semaphoreui.mysql_root_password }}"
+
+# Get latest semaphore tag
+
+- name: Get latest tag from GitHub API
+  ansible.builtin.shell: >
+    set -o pipefail && curl -s "https://api.github.com/repos/semaphoreui/semaphore/tags" | jq -r '.[0].name'
+  register: latest_tag_raw
+  changed_when: false
+
+- name: Set latest_tag
+  ansible.builtin.set_fact:
+    latest_tag: "{{ latest_tag_raw.stdout | trim | regex_replace('^v', '') }}"
+
+# Get installed version and compare
+
+- name: Get semaphore version
+  command: semaphore version
+  register: semaphore_version_raw
+  failed_when: false
+  changed_when: false
+
+- name: Parse semaphore version
+  set_fact:
+    semaphore_version_installed: "{{ semaphore_version_raw.stdout.split('-')[0] }}"
+  when: semaphore_version_raw.rc == 0
+
+- name: Set installed flag
+  set_fact:
+    semaphore_installed: "{{ semaphore_version_raw.rc == 0 }}"
+
+- name: Determine if semaphore update is required
+  ansible.builtin.set_fact:
+    update_required: "{{ not semaphore_installed or (semaphore_version_installed != latest_tag) }}"
+
+- name: Show update decision
+  debug:
+    msg: >
+      Semaphore installed: {{ semaphore_installed }},
+      Installed version: {{ semaphore_version_installed | default('N/A') }},
+      Latest version: {{ latest_tag }},
+      Update required: {{ update_required }}
+
+- name: Download semaphore if older version or not installed
+  ansible.builtin.get_url:
+    url: "https://github.com/semaphoreui/semaphore/releases/download/v{{ latest_tag | string }}/semaphore_{{ latest_tag | string }}_linux_amd64.tar.gz"
+    dest: "/tmp/semaphore_{{ latest_tag | string }}_linux_amd64.tar.gz"
+    owner: root
+    group: root
+    mode: '0755'
+  when: update_required
+
+- name: Ensure Semaphore Directory Exists
+  ansible.builtin.file:
+    path: /opt/semaphore
+    state: directory
+    owner: semaphore
+    group: semaphore
+    mode: '0755'
+
+- name: Unarchive semaphore binary
+  ansible.builtin.unarchive:
+    src: "/tmp/semaphore_{{ latest_tag | string }}_linux_amd64.tar.gz"
+    dest: "/opt/semaphore"
+    remote_src: true
+    creates: "/tmp/semaphore/semaphore"
+  when: update_required
+
+- name: Install semaphore binary
+  ansible.builtin.copy:
+    src: "/tmp/semaphore/semaphore"
+    dest: "/usr/local/bin/semaphore"
+    owner: semaphore
+    group: semaphore
+    mode: '0755'
+    remote_src: true
+  when: update_required
+
+- name: Create virtual environment and install requirements into it
+  ansible.builtin.pip:
+    requirements: '/opt/semaphore/requirements.txt'
+    virtualenv: '/opt/semaphore/venv'
+    state: present  # or 'latest' to upgrade the requirements
+
+- name: Create semaphore service
+  ansible.builtin.template:
+    src: semaphore.service.j2
+    dest: /etc/systemd/system/semaphore.service
+    owner: root
+    group: semaphore
+    mode: '0774'
+
+- name: Enable and start sempahore service
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: semaphore
+    enabled: true
+    state: started

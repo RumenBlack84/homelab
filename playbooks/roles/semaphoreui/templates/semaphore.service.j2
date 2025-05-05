@@ -1,0 +1,25 @@
+[Unit]
+Description=Semaphore UI
+Documentation=https://docs.semaphoreui.com/
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/usr/bin/semaphore
+ConditionPathExists=/opt/semaphore/output/config.json
+Requires=mariadb.service
+
+[Service]
+User=semaphore
+Group=semaphore
+Restart=always
+RestartSec=10s
+KillMode=control-group
+# to auto-upgrade python modules at service startup
+ExecStartPre=/bin/bash -c 'source /opt/semaphore/venv/bin/activate && python3 -m pip install --upgrade -r /opt/semaphore/requirements.txt'
+ExecStartPre=/bin/bash -c 'ansible-galaxy collection install --upgrade -r /opt/semaphore/requirements.yml'
+ExecStartPre=/bin/bash -c 'ansible-galaxy role install --force -r /opt/semaphore/requirements.yml'
+
+# REPLACE THE EXISTING 'ExecStart'
+ExecStart=/bin/bash -c 'source /opt/semaphore/venv/bin/activate && /usr/bin/semaphore server --config /opt/semaphore/output/config.json'
+
+[Install]
+WantedBy=multi-user.target

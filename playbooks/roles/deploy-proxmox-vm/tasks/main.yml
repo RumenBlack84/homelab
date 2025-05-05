@@ -75,13 +75,13 @@
   set_fact:
     vmid: "{{ vm_info.proxmox_vms[0].vmid }}"
   when:
-    - (vm_exists | default(true) | bool)
+    - not (vm_exists | default(false) | bool)
 
 - name: Set VMID if VM doesnt exist
   set_fact:
     vmid: "{{ clone_result.vmid }}"
   when:
-    - not (vm_exists | default(true) | bool)
+    - not (vm_exists | default(false) | bool)
 
 - name: Debug VMID
   ansible.builtin.debug:
@@ -91,7 +91,7 @@
   set_fact:
     proxmox_node: "{{ vm_info.proxmox_vms[0].node }}"
   when:
-    - (vm_exists | default(true) | bool)
+    - (vm_exists | default(false) | bool)
 
 - name: Record VM status
   set_fact:
@@ -103,7 +103,7 @@
   set_fact:
     proxmox_node: "{{ hostvars[inventory_hostname].proxmox_host }}"
   when:
-    - not (vm_exists | default(true) | bool)
+    - not (vm_exists | default(false) | bool)
 
 # Ensure values match inventory some of these cannot be added on clone
 - name: Update VM settings after clone

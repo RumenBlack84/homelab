@@ -17,7 +17,7 @@
 - name: Set a fact for VM existence
   delegate_to: localhost
   ansible.builtin.set_fact:
-    vm_exists: "{{ vm_info.failed | default(false) | bool }}"
+    vm_exists: "{{ (not vm_info.failed | default(false)) | bool }}"
 
 - name: Debug vm_info
   delegate_to: localhost
@@ -97,7 +97,7 @@
   set_fact:
     vm_status: "{{ vm_info.proxmox_vms[0].status }}"
   when:
-    - (vm_exists | default(true) | bool)
+    - (vm_exists | default(false) | bool)
 
 - name: Set target node if VM doesnt exist
   set_fact:
@@ -124,7 +124,7 @@
     ciupgrade: true
     ciuser: "{{ hostvars[inventory_hostname].ansible_user }}"
     cipassword: "{{ cloudinit.ci_password }}"
-    ipconfig: 
+    ipconfig:
       ipconfig0: "{{ ipconfig0_string }}"
     citype: "nocloud"
     update: true

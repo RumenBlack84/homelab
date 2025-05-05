@@ -231,22 +231,18 @@
     remote_src: true
   when: update_required
 
-- name: Create virtual environment
+- name: Ensure venv is created and pip up to date
   ansible.builtin.pip:
+    name: pip
     virtualenv: '/home/semaphore/venv'
     state: present
+    extra_args: --upgrade
 
-- name: Upgrade pip inside virtualenv
+- name: Install requirements into virtualenv
   ansible.builtin.pip:
-    name: pip
+    requirements: '/home/semaphore/requirements.txt'
     virtualenv: '/home/semaphore/venv'
-    state: latest
-
-- name: Upgrade pip inside virtualenv
-  ansible.builtin.pip:
-    name: pip
-    virtualenv: '/home/semaphore/venv'
-    state: latest
+    state: present
 
 - name: Create semaphore service
   ansible.builtin.template:

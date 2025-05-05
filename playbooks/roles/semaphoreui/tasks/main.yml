@@ -254,7 +254,7 @@
 
 - name: Create semaphore config
   ansible.builtin.template:
-    src: semaphore.service.j2
+    src: config.json.j2
     dest: /home/semaphore/output/config.json
     owner: semaphore
     group: semaphore

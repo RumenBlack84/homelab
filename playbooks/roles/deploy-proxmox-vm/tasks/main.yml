@@ -75,7 +75,7 @@
   set_fact:
     vmid: "{{ vm_info.proxmox_vms[0].vmid }}"
   when:
-    - not (vm_exists | default(false) | bool)
+    - (vm_exists | default(false) | bool)
 
 - name: Set VMID if VM doesnt exist
   set_fact:

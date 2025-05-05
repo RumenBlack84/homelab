@@ -81,26 +81,15 @@
     state: present
   when: not ansible_check_mode
 
-- name: Remove anonymous users
+- name: Set root password and switch to mysql_native_password
   community.mysql.mysql_user:
-    name: ''
-    host_all: true
-    login_user: root
-    login_password: "{{ semaphoreui.mysql_root_password }}"
-    state: absent
-
-- name: Disallow remote root login
-  community.mysql.mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
     name: root
-    host: "{{ item }}"
-    login_user: root
-    login_password: "{{ semaphoreui.mysql_root_password }}"
-    state: absent
-  loop:
-    - '%'
-    - '127.0.0.1'
-    - '::1'
-  when: item != 'localhost'
+    host: localhost
+    plugin: mysql_native_password
+    password: "{{ semaphoreui.mysql_root_password }}"
+    check_implicit_admin: true
+    state: present    
 
 - name: Remove test database
   community.mysql.mysql_db:

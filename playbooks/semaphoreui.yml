@@ -51,7 +51,7 @@
     - name: Create requirements.yml
       ansible.builtin.template:
         src: requirements.yml
-        dest: /home/semaphore/requirements.txt
+        dest: /home/semaphore/requirements.yml
         owner: semaphore
         group: semaphore
         mode: '0774'

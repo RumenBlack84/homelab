@@ -267,6 +267,10 @@
   register: Semaphore_User_List
   changed_when: false
 
+- name: Debug Semaphore_User_List
+  ansible.builtin.debug:
+    msg: "Semaphore_User_List: {{ Semaphore_User_List }}"
+
 - name: Create Semaphore User
   ansible.builtin.command: |
     semaphore user add --admin
@@ -278,7 +282,7 @@
   register: Semaphore_User_Creation
   changed_when: false
   when:
-    - semaphoreui.semaphore_admin_user not in Semaphore_User_List
+    - semaphoreui.semaphore_admin_user in Semaphore_User_List
 
 - name: Enable and start sempahore service
   ansible.builtin.systemd:

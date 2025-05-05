@@ -159,7 +159,9 @@
     name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
     state: started
   when:
-    - running not in vm_status
+    - vm_status is defined
+    - "'running' not in vm_status"
+
 
 - name: Wait for the VM to be fully Deployed
   delegate_to: localhost

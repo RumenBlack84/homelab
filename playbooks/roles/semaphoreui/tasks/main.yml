@@ -174,7 +174,7 @@
 
 - name: Ensure Semaphore Directory Exists
   ansible.builtin.file:
-    path: /opt/semaphore
+    path: /home/semaphore
     state: directory
     owner: semaphore
     group: semaphore
@@ -183,7 +183,7 @@
 - name: Unarchive semaphore binary
   ansible.builtin.unarchive:
     src: "/tmp/semaphore_{{ latest_tag | string }}_linux_amd64.tar.gz"
-    dest: "/opt/semaphore"
+    dest: "/home/semaphore"
     remote_src: true
     creates: "/tmp/semaphore/semaphore"
   when: update_required
@@ -200,8 +200,8 @@
 
 - name: Create virtual environment and install requirements into it
   ansible.builtin.pip:
-    requirements: '/opt/semaphore/requirements.txt'
-    virtualenv: '/opt/semaphore/venv'
+    requirements: '/home/semaphore/requirements.txt'
+    virtualenv: '/home/semaphore/venv'
     state: present  # or 'latest' to upgrade the requirements
 
 - name: Create semaphore service

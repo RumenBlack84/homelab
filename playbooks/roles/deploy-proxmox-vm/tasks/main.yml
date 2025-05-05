@@ -124,7 +124,8 @@
     ciupgrade: true
     ciuser: "{{ hostvars[inventory_hostname].ansible_user }}"
     cipassword: "{{ cloudinit.ci_password }}"
-    ipconfig: "{{ ipconfig0_string }}"
+    ipconfig: 
+      ipconfig0: "{{ ipconfig0_string }}"
     citype: "nocloud"
     update: true
 

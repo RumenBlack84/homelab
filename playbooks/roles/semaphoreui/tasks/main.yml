@@ -224,7 +224,7 @@
 - name: Install semaphore binary
   ansible.builtin.copy:
     src: "/tmp/semaphore"
-    dest: "/usr/local/bin/semaphore"
+    dest: "/usr/bin/semaphore"
     owner: semaphore
     group: semaphore
     mode: '0755'

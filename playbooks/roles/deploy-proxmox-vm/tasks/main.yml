@@ -19,7 +19,7 @@
   ansible.builtin.set_fact:
     vm_exists: "{{ (not vm_info.failed | default(false)) | bool }}"
 
-- name: Debug vm_info
+- name: Debug vm_exists
   delegate_to: localhost
   ansible.builtin.debug:
     msg: "VM Exists: {{ vm_exists }}"

@@ -47,6 +47,23 @@
     home: /home/semaphore
     create_home: true
 
+- name: Check if MariaDB is initialized
+  ansible.builtin.stat:
+    path: /var/lib/mysql/mysql
+  register: mariadb_initialized
+
+- name: Initialize MariaDB database (if needed)
+  ansible.builtin.command:
+    cmd: mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+  when: not mariadb_initialized.stat.exists
+  changed_when: false # handled by when condition
+
+- name: Ensure MariaDB is started and enabled
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
 - name: Enable and start Mariadb service for nodes with flag set
   ansible.builtin.systemd:
     daemon_reload: true

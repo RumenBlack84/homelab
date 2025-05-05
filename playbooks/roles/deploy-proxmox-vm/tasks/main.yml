@@ -17,7 +17,7 @@
 - name: Set a fact for VM existence
   delegate_to: localhost
   ansible.builtin.set_fact:
-    vm_exists: "{{ (not vm_info.failed | default(false)) | bool }}"
+    vm_exists: "{{ ((vm_info.proxmox_vms | length > 0) and (not (vm_info.failed | default(false)))) | bool }}"
 
 - name: Debug vm_exists
   delegate_to: localhost

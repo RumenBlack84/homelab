@@ -71,9 +71,19 @@
     enabled: true
     state: started
 
+- name: Set mysql socket for arch
+  set_fact:
+    mysql_socket: "/run/mysqld/mysqld.sock"
+  when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+
+- name: Set mysql socket for apt based
+  set_fact:
+    mysql_socket: "/var/run/mysqld/mysqld.sock"
+  when: (hostvars[inventory_hostname].ostype | default('')) in ["ubuntu", "debian"]
+
 - name: Set root password and ensure root@localhost exists
   community.mysql.mysql_user:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_unix_socket: "{{ mysql_socket }}"
     name: root
     host: localhost
     password: "{{ semaphoreui.mysql_root_password }}"
@@ -89,7 +99,7 @@
     plugin: mysql_native_password
     password: "{{ semaphoreui.mysql_root_password }}"
     check_implicit_admin: true
-    state: present    
+    state: present
 
 - name: Remove test database
   community.mysql.mysql_db:

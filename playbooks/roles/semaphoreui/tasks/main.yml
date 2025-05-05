@@ -272,7 +272,7 @@
     --password {{ semaphoreui.semaphore_admin_password }}
     --name {{ semaphoreui.semaphore_admin_user }}
     --email {{ semaphoreui.semaphore_admin_email }}
-    --config /home/semaphore/config.json
+    --config /home/semaphore/output/config.json
   register: Semaphore_User_Creation
   changed_when: false
   when:

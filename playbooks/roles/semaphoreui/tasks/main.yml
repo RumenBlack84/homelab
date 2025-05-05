@@ -73,8 +73,7 @@
 
 - name: Set root password and ensure root@localhost exists
   community.mysql.mysql_user:
-    login_user: root
-    login_password: ''
+    login_unix_socket: /var/run/mysqld/mysqld.sock
     name: root
     host: localhost
     password: "{{ semaphoreui.mysql_root_password }}"

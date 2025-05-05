@@ -168,4 +168,5 @@
   ansible.builtin.wait_for:
     timeout: 120 # values a bit high but *shrug* just in case
   when:
-    - not (vm_exists | default(false) | bool)
+    - vm_status is defined
+    - "'running' not in vm_status"

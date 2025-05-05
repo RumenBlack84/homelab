@@ -81,61 +81,69 @@
     mysql_socket: "/var/run/mysqld/mysqld.sock"
   when: (hostvars[inventory_hostname].ostype | default('')) in ["ubuntu", "debian"]
 
-- name: Set root password and ensure root@localhost exists
-  community.mysql.mysql_user:
-    login_unix_socket: "{{ mysql_socket }}"
-    name: root
-    host: localhost
-    password: "{{ semaphoreui.mysql_root_password }}"
-    check_implicit_admin: true
-    state: present
-  when: not ansible_check_mode
+- name: Set mysql socket fallback
+  set_fact:
+    mysql_socket: "/var/run/mysqld/mysqld.sock"
+  when: mysql_socket is not defined
 
-- name: Set root password and switch to mysql_native_password
+- name: Create local socket configuration for MariaDB
+  ansible.builtin.copy:
+    dest: /etc/my.cnf.d/99-local-socket.cnf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [mysqld]
+      socket={{ mysql_socket }}
+
+      [client]
+      socket={{ mysql_socket }}
+  register: socket_config_result
+
+- name: Restart MariaDB if socket config was changed
+  ansible.builtin.systemd:
+    name: mariadb
+    state: restarted
+    enabled: true
+  when: socket_config_result.changed
+
+- name: Ensure root uses unix_socket plugin
   community.mysql.mysql_user:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
     name: root
-    host: localhost
-    plugin: mysql_native_password
-    password: "{{ semaphoreui.mysql_root_password }}"
-    check_implicit_admin: true
+    plugin: unix_socket
     state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  when: not ansible_check_mode
 
 - name: Remove test database
   community.mysql.mysql_db:
     name: test
     state: absent
-    login_user: root
-    login_password: "{{ semaphoreui.mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
 
 - name: Reload privilege tables (flush privileges)
   community.mysql.mysql_query:
     query: "FLUSH PRIVILEGES;"
-    login_user: root
-    login_password: "{{ semaphoreui.mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
 
 - name: Create semaphore_db
   community.mysql.mysql_db:
     name: semaphore_db
     state: present
-    login_user: root
-    login_password: "{{ semaphoreui.mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
 
 - name: Grant all privileges on semaphore_db to semaphore_user@localhost
   community.mysql.mysql_user:
     name: semaphore_user
-    host: localhost
-    password: "password"
+    password: "{{ semaphoreui.semaphore_db_password }}"
     priv: "semaphore_db.*:ALL"
     state: present
-    login_user: root
-    login_password: "{{ semaphoreui.mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
 
 - name: Reload privilege tables (flush privileges)
   community.mysql.mysql_query:
     query: "FLUSH PRIVILEGES;"
-    login_user: root
-    login_password: "{{ semaphoreui.mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
 
 # Get latest semaphore tag
 
@@ -195,6 +203,14 @@
     group: semaphore
     mode: '0755'
 
+- name: Ensure Semaphore Output Directoriy Exists
+  ansible.builtin.file:
+    path: /home/semaphore/output
+    state: directory
+    owner: semaphore
+    group: semaphore
+    mode: '0755'
+
 - name: Unarchive semaphore binary
   ansible.builtin.unarchive:
     src: "/tmp/semaphore_{{ latest_tag | string }}_linux_amd64.tar.gz"
@@ -226,6 +242,32 @@
     owner: root
     group: semaphore
     mode: '0774'
+
+- name: Create semaphore config
+  ansible.builtin.template:
+    src: semaphore.service.j2
+    dest: /home/semaphore/output/config.json
+    owner: semaphore
+    group: semaphore
+    mode: '0774'
+
+- name: Collecting info to see if we need an Admin user
+  ansible.builtin.command: semaphore user list --config /home/semaphore/output/config.json
+  register: Semaphore_User_List
+  changed_when: false
+
+- name: Create Semaphore User
+  ansible.builtin.command: |
+    semaphore user add --admin
+    --login {{ semaphoreui.semaphore_admin_user }}
+    --password {{ semaphoreui.semaphore_admin_password }}
+    --name {{ semaphoreui.semaphore_admin_user }}
+    --email {{ semaphoreui.semaphore_admin_email }}
+    --config /home/semaphore/config.json
+  register: Semaphore_User_Creation
+  changed_when: false
+  when:
+    - semaphoreui.semaphore_admin_user not in Semaphore_User_List
 
 - name: Enable and start sempahore service
   ansible.builtin.systemd:

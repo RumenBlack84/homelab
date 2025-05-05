@@ -1,0 +1,13 @@
+{
+ 	"mysql": {
+ 		"host": "127.0.0.1:3306",
+ 		"user": "semaphore_user",
+ 		"pass": {{ semaphoreui.semaphore_db_password | to_json }},
+ 		"name": "semaphore_db"
+ 	},
+ 	"dialect": "mysql",
+ 	"tmp_path": "/home/semaphore",
+ 	"cookie_hash": {{ semaphoreui.cookie_hash | to_json }},
+ 	"cookie_encryption": {{ semaphoreui.cookie_encryption | to_json }},
+ 	"access_key_encryption": {{ semaphoreui.access_key_encryption | to_json }}
+ }

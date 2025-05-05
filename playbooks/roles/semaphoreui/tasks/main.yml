@@ -32,7 +32,7 @@
       - mariadb-lts-clients
       - python
       - python-pip
-      - python-virtualen
+      - python-virtualenv
       - ansible
     state: present
     update_cache: true

@@ -214,14 +214,14 @@
 - name: Unarchive semaphore binary
   ansible.builtin.unarchive:
     src: "/tmp/semaphore_{{ latest_tag | string }}_linux_amd64.tar.gz"
-    dest: "/home/semaphore"
+    dest: "/tmp/"
     remote_src: true
-    creates: "/tmp/semaphore/semaphore"
+    creates: "/tmp/semaphore"
   when: update_required
 
 - name: Install semaphore binary
   ansible.builtin.copy:
-    src: "/tmp/semaphore/semaphore"
+    src: "/tmp/semaphore"
     dest: "/usr/local/bin/semaphore"
     owner: semaphore
     group: semaphore

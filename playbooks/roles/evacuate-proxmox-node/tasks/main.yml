@@ -29,8 +29,7 @@
       loop: "{{ vms_on_host.proxmox_vms }}"
       when: >
         (item.tags is defined) and
-        ('immobile' in item.tags | regex_findall('[^,]+'))
-
+        ('immobile' in (item.tags | regex_findall('[^,;]+')))
 - name: Migrate mobile VMs
   block:
     - name: Gather fresh node info
@@ -50,7 +49,7 @@
     - name: Set best node fact
       set_fact:
         best_node: >-
-          {{ (fresh_node_info.nodes
+          {{ (fresh_node_info.proxmox_nodes
               | rejectattr('node', 'equalto', inventory_hostname)
               | selectattr('status', 'equalto', 'online')
               | sort(attribute='mem')

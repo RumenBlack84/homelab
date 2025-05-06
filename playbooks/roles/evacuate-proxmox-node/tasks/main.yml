@@ -69,9 +69,8 @@
         api_host: "{{ inventory_hostname }}"
         validate_certs: false
         name: "{{ item.name }}"
-        node: "{{ inventory_hostname }}"
+        node: "{{ best_node }}"
         migrate: true
-        target_node: "{{ best_node }}"
       loop: "{{ vms_on_host.proxmox_vms }}"
       loop_control:
         label: "{{ item.name }}"

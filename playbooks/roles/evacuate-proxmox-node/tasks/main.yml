@@ -66,10 +66,10 @@
       community.general.proxmox_kvm:
         api_user: "{{ proxmox.api_user }}"
         api_password: "{{ proxmox.api_password }}"
-        api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+        api_host: "{{ inventory_hostname }}"
         validate_certs: false
         name: "{{ item.name }}"
-        node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+        node: "{{ inventory_hostname }}"
         migrate: true
         target_node: "{{ best_node }}"
       loop: "{{ vms_on_host.proxmox_vms }}"

@@ -35,7 +35,7 @@
   block:
     - name: Gather fresh node info
       delegate_to: localhost
-      community.general.proxmox_nodes_info:
+      community.general.proxmox_node_info:
         api_user: "{{ proxmox.api_user }}"
         api_password: "{{ proxmox.api_password }}"
         api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"

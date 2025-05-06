@@ -71,6 +71,7 @@
         name: "{{ item.name }}"
         node: "{{ best_node }}"
         migrate: true
+        timeout: 300 # 5 minutes for now, should be plenty
       loop: "{{ vms_on_host.proxmox_vms }}"
       loop_control:
         label: "{{ item.name }}"

@@ -4,8 +4,8 @@
   community.general.proxmox_vm_info:
     api_user: "{{ proxmox.api_user }}"
     api_password: "{{ proxmox.api_password }}"
-    api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
-    node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    api_host: "{{ hostvars[inventory_hostname] }}"
+    node: "{{ hostvars[inventory_hostname] }}"
     validate_certs: false
   register: vms_on_host
 
@@ -22,7 +22,7 @@
       community.general.proxmox_kvm:
         api_user: "{{ proxmox.api_user }}"
         api_password: "{{ proxmox.api_password }}"
-        api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+        api_host: "{{ hostvars[inventory_hostname] }}"
         validate_certs: false
         vmid: "{{ item.vmid }}"
         state: stopped
@@ -38,7 +38,7 @@
       community.general.proxmox_node_info:
         api_user: "{{ proxmox.api_user }}"
         api_password: "{{ proxmox.api_password }}"
-        api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+        api_host: "{{ hostvars[inventory_hostname] }}"
         validate_certs: false
       register: fresh_node_info
 
@@ -46,7 +46,7 @@
       set_fact:
         best_node: >-
           {{ (fresh_node_info.nodes
-              | rejectattr('node', 'equalto', hostvars[inventory_hostname].proxmox_host)
+              | rejectattr('node', 'equalto', hostvars[inventory_hostname])
               | selectattr('status', 'equalto', 'online')
               | sort(attribute='mem')
               | map(attribute='node')
@@ -57,10 +57,10 @@
       community.general.proxmox_kvm:
         api_user: "{{ proxmox.api_user }}"
         api_password: "{{ proxmox.api_password }}"
-        api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+        api_host: "{{ hostvars[inventory_hostname] }}"
         validate_certs: false
         name: "{{ item.name }}"
-        node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+        node: "{{ hostvars[inventory_hostname] }}"
         migrate: true
         target_node: "{{ best_node }}"
       loop: "{{ vms_on_host.virtual_machines }}"

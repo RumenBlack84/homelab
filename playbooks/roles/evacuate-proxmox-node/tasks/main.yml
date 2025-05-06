@@ -5,53 +5,67 @@
     api_user: "{{ proxmox.api_user }}"
     api_password: "{{ proxmox.api_password }}"
     api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+    node: "{{ hostvars[inventory_hostname].proxmox_host }}"
     validate_certs: false
-  register: proxmox_vms
-
-- name: Debug proxmox_vms
-  delegate_to: localhost
-  ansible.builtin.debug:
-    msg: "Checking proxmox_vms: {{ proxmox_vms }}"
-
-- name: Filter VMs on current node
-  delegate_to: localhost
-  set_fact:
-    vms_on_host: >-
-      {{ proxmox_vms.virtual_machines | selectattr('node', 'equalto', proxmox_node) | list }}
+  register: vms_on_host
 
 - name: Debug vms_on_host
   delegate_to: localhost
   ansible.builtin.debug:
     msg: "Checking vms_on_host : {{ vms_on_host }}"
+  failed_when: true # I want to fail here to check output for now
 
-- name: Evacuate or shutdown VMs
+- name: Shutdown VMs tagged immobile
   block:
     - name: Shutdown immobile VMs
       delegate_to: localhost
-      community.general.proxmox:
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_token_secret }}"
-        api_host: "{{ proxmox_host }}"
+      community.general.proxmox_kvm:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
         validate_certs: false
         vmid: "{{ item.vmid }}"
         state: stopped
-      loop: "{{ vms_on_host }}"
+      loop: "{{ vms_on_host.virtual_machines }}"
       when: >
         (item.tags is defined) and
         ('immobile' in item.tags | regex_findall('[^,]+'))
 
-    - name: Migrate mobile VMs
+- name: Migrate mobile VMs
+  block:
+    - name: Gather fresh node info
       delegate_to: localhost
-      community.general.proxmox_migrate:
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_token_secret }}"
-        api_host: "{{ proxmox_host }}"
+      community.general.proxmox_nodes_info:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
         validate_certs: false
-        vmid: "{{ item.vmid }}"
-        target_node: "{{ destination_node }}"
-      loop: "{{ vms_on_host }}"
+      register: fresh_node_info
+
+    - name: Set best node fact
+      set_fact:
+        best_node: >-
+          {{ (fresh_node_info.nodes
+              | rejectattr('node', 'equalto', hostvars[inventory_hostname].proxmox_host)
+              | selectattr('status', 'equalto', 'online')
+              | sort(attribute='mem')
+              | map(attribute='node')
+              | list).0 }}
+
+    - name: Migrate each mobile VM
+      delegate_to: localhost
+      community.general.proxmox_kvm:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ hostvars[inventory_hostname].proxmox_host }}"
+        validate_certs: false
+        name: "{{ item.name }}"
+        node: "{{ hostvars[inventory_hostname].proxmox_host }}"
+        migrate: true
+        target_node: "{{ best_node }}"
+      loop: "{{ vms_on_host.virtual_machines }}"
+      loop_control:
+        label: "{{ item.name }}"
       when: >
         (item.tags is not defined) or
         ('immobile' not in item.tags | regex_findall('[^,]+'))

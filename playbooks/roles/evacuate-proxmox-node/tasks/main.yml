@@ -4,7 +4,7 @@
   community.general.proxmox_vm_info:
     api_user: "{{ proxmox.api_user }}"
     api_password: "{{ proxmox.api_password }}"
-    api_host: "{{ hostvars[inventory_hostname] }}"
+    api_host: "{{ inventory_hostname }}"
     node: "{{ inventory_hostname }}"
     validate_certs: false
   register: vms_on_host

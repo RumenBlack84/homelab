@@ -1,5 +1,5 @@
 ---
 - name: Test whatever role we are working on
-  hosts: proxmox
+  hosts: Aesir
   roles:
-    - first-available-vm-id
+    - evacuate-proxmox-node

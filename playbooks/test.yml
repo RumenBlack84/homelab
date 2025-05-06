@@ -1,5 +1,7 @@
 ---
 - name: Test whatever role we are working on
   hosts: Aesir
+  vars_files:
+    - vault/vault.yml
   roles:
     - evacuate-proxmox-node

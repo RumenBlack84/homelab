@@ -7,13 +7,13 @@
     api_host: "{{ inventory_hostname }}"
     node: "{{ inventory_hostname }}"
     validate_certs: false
+    type: qemu
   register: vms_on_host
 
 - name: Debug vms_on_host
   delegate_to: localhost
   ansible.builtin.debug:
     msg: "Checking vms_on_host : {{ vms_on_host }}"
-  failed_when: true # I want to fail here to check output for now
 
 - name: Shutdown VMs tagged immobile
   block:
@@ -26,7 +26,7 @@
         validate_certs: false
         vmid: "{{ item.vmid }}"
         state: stopped
-      loop: "{{ vms_on_host.virtual_machines }}"
+      loop: "{{ vms_on_host.proxmox_vms }}"
       when: >
         (item.tags is defined) and
         ('immobile' in item.tags | regex_findall('[^,]+'))
@@ -73,7 +73,7 @@
         node: "{{ hostvars[inventory_hostname].proxmox_host }}"
         migrate: true
         target_node: "{{ best_node }}"
-      loop: "{{ vms_on_host.virtual_machines }}"
+      loop: "{{ vms_on_host.proxmox_vms }}"
       loop_control:
         label: "{{ item.name }}"
       when: >

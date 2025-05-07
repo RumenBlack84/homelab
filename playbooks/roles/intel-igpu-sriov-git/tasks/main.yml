@@ -50,11 +50,13 @@
     group: root
     mode: '0644'
   when: "latest_tag not in installed_version"
+  register: driver_updated
 
 - name: Install the .deb package
   ansible.builtin.apt:
     deb: /tmp/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
   when: "latest_tag not in installed_version"
+  register: driver_updated
 
 - name: Set Grub kernel parameters
   ansible.builtin.lineinfile:
@@ -62,7 +64,6 @@
     regexp: '^GRUB_CMDLINE_LINUX_DEFAULT=.*'
     line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 module_blacklist=xe"'
     backup: true
-  register: grub_result
 
 # In every system I've seen this has been 00:02.0 however if issues are encountered verify with lspci | grep VGA
 - name: Overwrite /etc/sysfs.conf with SR-IOV configuration and record in sysfs-result
@@ -73,13 +74,11 @@
     owner: root
     group: root
     mode: '0644'
-  register: sysfs_result
 
 - name: Update initramfs for all kernels
   ansible.builtin.command: update-initramfs -u -k all
-  when: grub_result.changed or sysfs_result.changed
   register: initramfs_result
-  changed_when: true
+  changed_when: false
 
 - name: Refresh Boot # noqa: no-handler
   ansible.builtin.command: "proxmox-boot-tool refresh"
@@ -90,18 +89,18 @@
 - name: Evict Linstor Resources
   ansible.builtin.include_role:
     name: evacuate-linstor-node
-  when: proxmox_boot_refresh is defined
+  when: proxmox_boot_refresh.changed
 
 - name: Evacuate Proxmox of all LXC & VMs
   ansible.builtin.include_role:
     name: evacuate-proxmox-node
-  when: proxmox_boot_refresh is defined
+  when: proxmox_boot_refresh.changed
 
 - name: Reboot the system
   ansible.builtin.reboot:
     reboot_timeout: 600  # Adjust the timeout depending on how long the system takes to reboot
     msg: "Rebooting the system now, waiting up to 600 seconds for it to be available again"
-  when: proxmox_boot_refresh is defined
+  when: proxmox_boot_refresh.changed
   register: reboot_result
 
 - name: Notify user of reboot completion

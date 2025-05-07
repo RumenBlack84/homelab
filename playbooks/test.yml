@@ -3,5 +3,21 @@
   hosts: Aesir
   vars_files:
     - vault/vault.yml
-  roles:
-    - evacuate-proxmox-node
+  tasks:
+    - name: Get list of LXCs
+      delegate_to: localhost
+      community.general.proxmox_vm_info:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ inventory_hostname }}"
+        node: "{{ inventory_hostname }}"
+        type: lxc
+      register: lxcs_on_host
+      async: 30
+      poll: 5
+    - name: Debug lxcs_on_host
+      delegate_to: localhost
+      ansible.builtin.debug:
+        msg: "Checking lxcs_on_host : {{ lxcs_on_host }}"
+    #roles:
+  #  - evacuate-proxmox-node

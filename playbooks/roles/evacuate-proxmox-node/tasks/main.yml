@@ -8,7 +8,6 @@
         api_password: "{{ proxmox.api_password }}"
         api_host: "{{ inventory_hostname }}"
         node: "{{ inventory_hostname }}"
-        validate_certs: false
         type: lxc
       register: lxcs_on_host
       async: 30

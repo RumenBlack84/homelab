@@ -1,0 +1,22 @@
+---
+- name: Evict linstor_db resource
+  shell: >
+    drbd-reactorctl evict /etc/drbd-reactor.d/linstor_db.toml
+  changed_when: false
+  ignore_errors: true
+  register: linstor_evict
+
+- name: Debug nfs_evict
+  ansible.builtin.debug:
+    msg: "Checking linstor_evict : {{ linstor_evict }}"
+
+- name: Evict Nfs resource
+  shell: >
+    drbd-reactorctl evict /etc/drbd-reactor.d/linstor-gateway-nfs-nfs.toml
+  changed_when: false
+  ignore_errors: true
+  register: nfs_evict
+
+- name: Debug nfs_evict
+  ansible.builtin.debug:
+    msg: "Checking nfs_evict : {{ nfs_evict }}"

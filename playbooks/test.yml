@@ -3,6 +3,9 @@
   hosts: Aesir
   vars_files:
     - vault/vault.yml
+  vars:
+    ansible_shell_executable: /bin/bash  # Use bash as the default shell
+    ansible_ssh_pipelining: true
   tasks:
     - name: Get list of LXCs
       delegate_to: localhost

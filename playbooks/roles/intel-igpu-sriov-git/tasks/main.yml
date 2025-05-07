@@ -40,7 +40,7 @@
 
 - name: Set Update_Required
   ansible.builtin.set_fact:
-    Update_Required: "latest_tag not in installed_version"
+    Update_Required: "{{ latest_tag not in installed_version }}"
 
 - name: Debug the latest tag
   ansible.builtin.debug:

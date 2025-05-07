@@ -11,6 +11,7 @@
         validate_certs: false
         type: lxc
       register: lxcs_on_host
+      become: false
       async: 30
       poll: 5
 

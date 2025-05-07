@@ -56,7 +56,7 @@
 
     - name: Determine if new kernel is installed
       ansible.builtin.set_fact:
-        new_kernel_installed: "{{ running_kernel.stdout != latest_kernel }}"
+        new_kernel_installed: "{{ running_kernel.stdout != latest_kernel.stdout }}"
 
     - name: Debug latest_kernel
       ansible.builtin.debug:

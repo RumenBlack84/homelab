@@ -49,7 +49,7 @@
 
     - name: Set latest kernel version (sorted)
       ansible.builtin.set_fact:
-        latest_kernel: "{{ installed_kernels.stdout_lines | sort(attribute='split', reverse=true) | first }}"
+        latest_kernel: "{{ installed_kernels.stdout_lines | sort(reverse=true) | first }}"
 
     - name: Determine if new kernel is installed
       ansible.builtin.set_fact:

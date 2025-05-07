@@ -106,7 +106,9 @@
 - name: Notify user of reboot completion
   ansible.builtin.debug:
     msg: "The system has rebooted and is back online."
-  when: reboot_result is defined
+  when:
+    - reboot_result is defined
+    - proxmox_boot_refresh.changed
 
 - name: Run lspci and grep for VGA
   ansible.builtin.shell: "set -o pipefail && lspci | grep VGA"

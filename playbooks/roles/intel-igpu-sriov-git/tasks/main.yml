@@ -44,7 +44,7 @@
 
 - name: Download the latest release
   ansible.builtin.get_url:
-    url: https://github.com/strongtz/i915-sriov-dkms/releases/download/{{ latest_tag.stdout }}/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
+    url: https://github.com/strongtz/i915-sriov-dkms/releases/download/{{ latest_tag }}/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
     dest: /tmp/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
     owner: root
     group: root

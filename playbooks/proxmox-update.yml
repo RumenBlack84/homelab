@@ -81,4 +81,4 @@
     - name: Notify user of reboot completion
       ansible.builtin.debug:
         msg: "The system has rebooted and is back online."
-      when: reboot_result is defined
+      when: (new_kernel_installed | default(false) | bool)

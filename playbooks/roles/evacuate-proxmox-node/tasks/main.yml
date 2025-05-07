@@ -33,24 +33,56 @@
 
 - name: Migrate LXCs
   block:
-    - name: Migrate LXC containers manually
+    - name: Gather fresh node info
       delegate_to: localhost
-      community.general.proxmox_api:
+      community.general.proxmox_node_info:
         api_user: "{{ proxmox.api_user }}"
         api_password: "{{ proxmox.api_password }}"
         api_host: "{{ inventory_hostname }}"
         validate_certs: false
-        endpoint: "nodes/{{ inventory_hostname }}/lxc/{{ item.vmid }}/migrate"
+      register: fresh_node_info
+
+    - name: Debug fresh_node_info
+      delegate_to: localhost
+      ansible.builtin.debug:
+        msg: "The Fresh Node Info : {{ fresh_node_info }}"
+
+    - name: Set best node fact
+      set_fact:
+        best_node: >-
+          {{ (fresh_node_info.proxmox_nodes
+              | rejectattr('node', 'equalto', inventory_hostname)
+              | selectattr('status', 'equalto', 'online')
+              | sort(attribute='mem')
+              | map(attribute='node')
+              | list).0 }}
+
+    - name: Debug best_node
+      delegate_to: localhost
+      ansible.builtin.debug:
+        msg: "The best node is : {{ best_node }}"
+
+    - name: Migrate LXC container manually
+      delegate_to: localhost
+      uri:
+        url: "https://{{ inventory_hostname }}:8006/api2/json/nodes/{{ inventory_hostname }}/lxc/{{ item.vmid }}/migrate"
         method: POST
-        data:
+        user: "{{ proxmox.api_user }}"
+        password: "{{ proxmox.api_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        body_format: json
+        body:
           target: "{{ best_node }}"
           online: "{{ item.status == 'running' }}"
+        status_code: 200
       loop: "{{ vms_on_host_lxc.proxmox_vms }}"
       loop_control:
         label: "{{ item.name }}"
       when: >
         (item.tags is not defined) or
         ('immobile' not in (item.tags | regex_findall('[^,;]+')))
+
 
 - name: Get list of VMs
   delegate_to: localhost

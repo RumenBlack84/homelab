@@ -46,17 +46,9 @@
         msg: "Checking running_kernel: {{ running_kernel }}"
 
     - name: Get latest installed kernel version
-      ansible.builtin.command: ls /usr/lib/modules
-      register: installed_kernels
+      ansible.builtin.command: grep vmlinuz /boot/grub/grub.cfg  | head -1 | awk '{ print $2 }' | sed -e 's%/boot/vmlinuz-%%;s%/ROOT/pve-1@%%'
+      register: latest_kernel
       changed_when: false
-
-    - name: Debug installed_kernels
-      ansible.builtin.debug:
-        msg: "Checking installed_kernels: {{ installed_kernels }}"
-
-    - name: Set latest kernel version (nat sorted)
-      ansible.builtin.set_fact:
-        latest_kernel: "{{ installed_kernels.stdout_lines | nat_sort(reverse=true) | first }}"
 
     - name: Debug latest_kernel
       ansible.builtin.debug:

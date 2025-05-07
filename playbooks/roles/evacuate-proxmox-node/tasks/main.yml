@@ -63,7 +63,7 @@
 
     - name: Migrate LXC containers manually with pct
       shell: >
-        pct migrate {{ item.vmid }} {{ best_node }}
+        pct migrate {{ item.vmid }} {{ best_node }} --restart
       args:
         executable: /bin/bash
       loop: "{{ lxcs_on_host.proxmox_vms }}"

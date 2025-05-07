@@ -46,7 +46,7 @@
         msg: "Checking running_kernel: {{ running_kernel }}"
 
     - name: Get latest installed kernel version
-      ansible.builtin.command: grep vmlinuz /boot/grub/grub.cfg  | head -1 | awk '{ print $2 }' | sed -e 's%/boot/vmlinuz-%%;s%/ROOT/pve-1@%%'
+      ansible.builtin.shell: "set -o pipefail && grep vmlinuz /boot/grub/grub.cfg | head -1 | awk '{ print $2 }' | sed -e 's%/boot/vmlinuz-%%;s%/ROOT/pve-1@%%'"
       register: latest_kernel
       changed_when: false
 

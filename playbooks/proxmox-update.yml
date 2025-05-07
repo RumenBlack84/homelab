@@ -3,6 +3,8 @@
   serial: 1  # ✅ Runs all tasks for one host before moving to the next
   remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
   become: true
+  vars_files:
+    - vault/vault.yml
   vars:
     ansible_shell_executable: /bin/bash  # Use bash as the default shell
     ansible_ssh_pipelining: true

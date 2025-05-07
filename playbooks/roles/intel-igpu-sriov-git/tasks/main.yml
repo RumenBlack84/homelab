@@ -3,51 +3,44 @@
   ansible.builtin.debug:
     msg: "Starting install procedure for sr-iov igpu virtualization"
 
-- name: Ensure mokutil dependancy is installed
+- name: Ensure dependancies are installed
   ansible.builtin.apt:
-    name: mokutil
-    state: present
-    update_cache: true
-
-- name: Ensure git is installed
-  ansible.builtin.apt:
-    name: git
-    state: present
-    update_cache: true
-
-- name: Ensure dkms is installed
-  ansible.builtin.apt:
-    name: dkms
-    state: present
-    update_cache: true
-
-- name: Ensure sysfsutils is installed
-  ansible.builtin.apt:
-    name: sysfsutils
-    state: present
-    update_cache: true
-
-- name: Ensure jq is installed
-  ansible.builtin.apt:
-    name: jq
+    name:
+      - mokutil
+      - git
+      - dkms
+      - sysfsutils
+      - jq
     state: present
     update_cache: true
 
 - name: Check if the package is already installed
   ansible.builtin.shell: dpkg-query -W -f='${Version}' i915-sriov-dkms
-  register: installed_version
+  register: installed_version_raw
   failed_when: false
   changed_when: false
+
+- name: Set installed version
+  ansible.builtin.set_fact:
+    installed_version: "{{ installed_version_raw.stdout | trim }}"
+
+- name: Debug the installed version
+  ansible.builtin.debug:
+    msg: "Installed Version: {{ installed_version }}"
 
 - name: Get latest tag from GitHub API
   ansible.builtin.shell: >
     set -o pipefail && curl -s "https://api.github.com/repos/strongtz/i915-sriov-dkms/tags" | jq -r '.[0].name'
-  register: latest_tag
+  register: latest_tag_raw
   changed_when: false
+
+- name: Set latest_tag
+  ansible.builtin.set_fact:
+    latest_tag: "{{ latest_tag_raw.stdout | trim }}"
 
 - name: Debug the latest tag
   ansible.builtin.debug:
-    msg: "Latest tag is {{ latest_tag.stdout }}"
+    msg: "Latest tag is {{ latest_tag }}"
 
 - name: Download the latest release
   ansible.builtin.get_url:
@@ -56,12 +49,12 @@
     owner: root
     group: root
     mode: '0644'
-  when: "latest_tag.stdout not in installed_version"
+  when: "latest_tag not in installed_version"
 
 - name: Install the .deb package
   ansible.builtin.apt:
     deb: /tmp/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
-  when: "latest_tag.stdout not in installed_version"
+  when: "latest_tag not in installed_version"
 
 - name: Set Grub kernel parameters
   ansible.builtin.lineinfile:

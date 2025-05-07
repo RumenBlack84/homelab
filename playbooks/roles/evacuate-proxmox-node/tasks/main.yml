@@ -1,14 +1,34 @@
 ---
-- name: Get list of LXCs
-  delegate_to: localhost
-  community.general.proxmox_vm_info:
-    api_user: "{{ proxmox.api_user }}"
-    api_password: "{{ proxmox.api_password }}"
-    api_host: "{{ inventory_hostname }}"
-    node: "{{ inventory_hostname }}"
-    validate_certs: false
-    type: lxc
-  register: lxcs_on_host
+- name: Try to get list of LXCs
+  block:
+    - name: Get list of LXCs
+      delegate_to: localhost
+      community.general.proxmox_vm_info:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ inventory_hostname }}"
+        node: "{{ inventory_hostname }}"
+        validate_certs: false
+        type: lxc
+      register: lxcs_on_host
+      async: 30
+      poll: 5
+
+  rescue:
+    - name: Set empty lxcs_on_host on failure
+      ansible.builtin.set_fact:
+        lxcs_on_host:
+          vms: []
+
+- name: Stop all LXCs with pct if we cannot do it through api
+  ansible.builtin.shell: |
+    set -o pipefail && for ct in $(pct list | awk 'NR>1 {print $1}'); do
+      pct stop "$ct"
+    done
+  args:
+    executable: /bin/bash
+  when: lxcs_on_host.vms | length > 0
+  changed_when: false
 
 - name: Debug lxcs_on_host
   delegate_to: localhost

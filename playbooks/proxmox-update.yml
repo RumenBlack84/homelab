@@ -54,9 +54,9 @@
       ansible.builtin.debug:
         msg: "Checking installed_kernels: {{ installed_kernels }}"
 
-    - name: Set latest kernel version (sorted)
+    - name: Set latest kernel version (nat sorted)
       ansible.builtin.set_fact:
-        latest_kernel: "{{ installed_kernels.stdout_lines | sort(reverse=true) | first }}"
+        latest_kernel: "{{ installed_kernels.stdout_lines | nat_sort(reverse=true) | first }}"
 
     - name: Debug latest_kernel
       ansible.builtin.debug:

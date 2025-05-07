@@ -51,17 +51,17 @@
 
 - name: Download the latest release
   ansible.builtin.get_url:
-    url: https://github.com/strongtz/i915-sriov-dkms/releases/download/{{ latest_tag }}/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
+    url: https://github.com/strongtz/i915-sriov-dkms/releases/download/{{ latest_tag.stdout }}/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
     dest: /tmp/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
     owner: root
     group: root
     mode: '0644'
-  when: "latest_tag not in installed_version"
+  when: "latest_tag.stdout not in installed_version"
 
 - name: Install the .deb package
   ansible.builtin.apt:
     deb: /tmp/i915-sriov-dkms_{{ latest_tag }}_amd64.deb
-  when: "latest_tag not in installed_version"
+  when: "latest_tag.stdout not in installed_version"
 
 - name: Set Grub kernel parameters
   ansible.builtin.lineinfile:

@@ -1,33 +1,13 @@
 ---
-- name: Try to get list of LXCs
-  block:
-    - name: Get list of LXCs
-      delegate_to: localhost
-      community.general.proxmox_vm_info:
-        api_user: "{{ proxmox.api_user }}"
-        api_password: "{{ proxmox.api_password }}"
-        api_host: "{{ inventory_hostname }}"
-        node: "{{ inventory_hostname }}"
-        type: lxc
-      register: lxcs_on_host
-      async: 30
-      poll: 5
-
-  rescue:
-    - name: Set empty lxcs_on_host on failure
-      ansible.builtin.set_fact:
-        lxcs_on_host:
-          proxmox_vms: []
-
-- name: Stop all LXCs with pct if we cannot do it through api
-  ansible.builtin.shell: |
-    set -o pipefail && for ct in $(pct list | awk 'NR>1 {print $1}'); do
-      pct shutdown "$ct"
-    done
-  args:
-    executable: /bin/bash
-  when: not (lxcs_on_host.proxmox_vms | length > 0)
-  changed_when: false
+- name: Get list of LXCs
+  delegate_to: localhost
+  community.general.proxmox_vm_info:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ inventory_hostname }}"
+    node: "{{ inventory_hostname }}"
+    type: lxc
+  register: lxcs_on_host
 
 - name: Debug lxcs_on_host
   delegate_to: localhost
@@ -35,7 +15,6 @@
     msg: "Checking lxcs_on_host : {{ lxcs_on_host }}"
 
 - name: Shutdown lxcs tagged immobile
-  when: (lxcs_on_host.proxmox_vms | length > 0)
   block:
     - name: Shutdown immobile lxcs
       delegate_to: localhost
@@ -52,7 +31,6 @@
         ('immobile' in (item.tags | regex_findall('[^,;]+'))) and
 
 - name: Migrate LXCs
-  when: (lxcs_on_host.proxmox_vms | length > 0)
   block:
     - name: Gather fresh node info
       delegate_to: localhost
@@ -96,27 +74,17 @@
         (item.tags is not defined) or
         ('immobile' not in (item.tags | regex_findall('[^,;]+')))
 
-- name: Try to get list of VMs
-  block:
-    - name: Get list of VMs
-      delegate_to: localhost
-      become: false
-      community.general.proxmox_vm_info:
-        api_user: "{{ proxmox.api_user }}"
-        api_password: "{{ proxmox.api_password }}"
-        api_host: "{{ inventory_hostname }}"
-        node: "{{ inventory_hostname }}"
-        validate_certs: false
-        type: qemu
-      register: vms_on_host
-      async: 30
-      poll: 5
-
-  rescue:
-    - name: Set empty vms_on_host on failure
-      ansible.builtin.set_fact:
-        vms_on_host:
-          proxmox_vms: []
+- name: Get list of VMs
+  delegate_to: localhost
+  become: false
+  community.general.proxmox_vm_info:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ inventory_hostname }}"
+    node: "{{ inventory_hostname }}"
+    validate_certs: false
+    type: qemu
+  register: vms_on_host
 
 - name: Stop all VMs with qm if we cannot do it through api
   ansible.builtin.shell: |
@@ -128,14 +96,12 @@
   when: not (vms_on_host.proxmox_vms | length > 0)
   changed_when: false
 
-
 - name: Debug vms_on_host
   delegate_to: localhost
   ansible.builtin.debug:
     msg: "Checking vms_on_host : {{ vms_on_host }}"
 
 - name: Shutdown VMs tagged immobile
-  when: vms_on_host.proxmox_vms | length > 0
   block:
     - name: Shutdown immobile VMs
       delegate_to: localhost
@@ -152,7 +118,6 @@
         ('immobile' in (item.tags | regex_findall('[^,;]+')))
 
 - name: Migrate mobile VMs
-  when: vms_on_host.proxmox_vms | length > 0
   block:
     - name: Gather fresh node info
       delegate_to: localhost

@@ -154,4 +154,4 @@
         label: "{{ item.name }}"
       when: >
         (item.tags is not defined) or
-        ('immobile' not in in (item.tags | regex_findall('[^,;]+')))
+        ('immobile' not in (item.tags | regex_findall('[^,;]+')))

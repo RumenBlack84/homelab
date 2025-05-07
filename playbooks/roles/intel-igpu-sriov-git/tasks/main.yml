@@ -24,10 +24,6 @@
   ansible.builtin.set_fact:
     installed_version: "{{ installed_version_raw.stdout | trim }}"
 
-- name: Debug the installed version
-  ansible.builtin.debug:
-    msg: "Installed Version: {{ installed_version }}"
-
 - name: Get latest tag from GitHub API
   ansible.builtin.shell: >
     set -o pipefail && curl -s "https://api.github.com/repos/strongtz/i915-sriov-dkms/tags" | jq -r '.[0].name'
@@ -42,9 +38,12 @@
   ansible.builtin.set_fact:
     Update_Required: "{{ latest_tag not in installed_version }}"
 
-- name: Debug the latest tag
+- name: Debug the Collected variables
   ansible.builtin.debug:
-    msg: "Latest tag is {{ latest_tag }}"
+    msg: |
+      "Installed Version: {{ installed_version }}"
+      "Latest Version: {{ latest_tag }}"
+      "Update Required: {{ Update_Required }}"
 
 - name: Update Intel SR-IOV Drivers Only when required
   when: Update_Required

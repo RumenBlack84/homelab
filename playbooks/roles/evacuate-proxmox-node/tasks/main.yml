@@ -28,7 +28,7 @@
       loop: "{{ lxcs_on_host.proxmox_vms }}"
       when: >
         (item.tags is defined) and
-        ('immobile' in (item.tags | regex_findall('[^,;]+'))) and
+        ('immobile' in (item.tags | regex_findall('[^,;]+')))
 
 - name: Migrate LXCs
   block:
@@ -85,16 +85,6 @@
     validate_certs: false
     type: qemu
   register: vms_on_host
-
-- name: Stop all VMs with qm if we cannot do it through api
-  ansible.builtin.shell: |
-    set -o pipefail && for vm in $(qm list | awk 'NR>1 {print $1}'); do
-      qm shutdown "$vm"
-    done
-  args:
-    executable: /bin/bash
-  when: not (vms_on_host.proxmox_vms | length > 0)
-  changed_when: false
 
 - name: Debug vms_on_host
   delegate_to: localhost

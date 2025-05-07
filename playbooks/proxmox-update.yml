@@ -53,6 +53,16 @@
       ansible.builtin.set_fact:
         new_kernel_installed: "{{ running_kernel.stdout != latest_kernel }}"
 
+    - name: Evict Linstor Resources
+      ansible.builtin.include_role:
+        name: evacuate-linstor-node
+      when: (new_kernel_installed | default(false) | bool)
+
+    - name: Evacuate Proxmox of all LXC & VMs
+      ansible.builtin.include_role:
+        name: evacuate-proxmox-node
+      when: (new_kernel_installed | default(false) | bool)
+
     - name: Reboot the system
       ansible.builtin.reboot:
         reboot_timeout: 600  # Adjust the timeout depending on how long the system takes to reboot

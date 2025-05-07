@@ -87,6 +87,16 @@
   changed_when: proxmox_boot_refresh.rc == 0 and "no changes" not in proxmox_boot_refresh.stdout
   when: initramfs_result.changed
 
+- name: Evict Linstor Resources
+  ansible.builtin.include_role:
+    name: evacuate-linstor-node
+  when: proxmox_boot_refresh is defined
+
+- name: Evacuate Proxmox of all LXC & VMs
+  ansible.builtin.include_role:
+    name: evacuate-proxmox-node
+  when: proxmox_boot_refresh is defined
+
 - name: Reboot the system
   ansible.builtin.reboot:
     reboot_timeout: 600  # Adjust the timeout depending on how long the system takes to reboot

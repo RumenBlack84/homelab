@@ -85,7 +85,6 @@
     validate_certs: false
     type: qemu
   register: vms_on_host
-  failed_when: true # fail here for testing
 
 - name: Debug vms_on_host
   delegate_to: localhost

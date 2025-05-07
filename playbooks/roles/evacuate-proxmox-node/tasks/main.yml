@@ -67,7 +67,7 @@
         pct migrate {{ item.vmid }} {{ best_node }} --online
       args:
         executable: /bin/bash
-      loop: "{{ vms_on_host_lxc.proxmox_vms }}"
+      loop: "{{ lxcs_on_host.proxmox_vms }}"
       loop_control:
         label: "{{ item.name }}"
       changed_when: false

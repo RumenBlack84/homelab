@@ -16,8 +16,6 @@
         node: "{{ inventory_hostname }}"
         type: lxc
       register: lxcs_on_host
-      async: 30
-      poll: 5
     - name: Debug lxcs_on_host
       delegate_to: localhost
       ansible.builtin.debug:

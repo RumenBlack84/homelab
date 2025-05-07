@@ -1,4 +1,57 @@
 ---
+- name: Get list of LXCs
+  delegate_to: localhost
+  community.general.proxmox_vm_info:
+    api_user: "{{ proxmox.api_user }}"
+    api_password: "{{ proxmox.api_password }}"
+    api_host: "{{ inventory_hostname }}"
+    node: "{{ inventory_hostname }}"
+    validate_certs: false
+    type: lxc
+  register: lxcs_on_host
+
+- name: Debug lxcs_on_host
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "Checking lxcs_on_host : {{ lxcs_on_host }}"
+
+- name: Shutdown lxcs tagged immobile
+  block:
+    - name: Shutdown immobile lxcs
+      delegate_to: localhost
+      community.general.proxmox:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ inventory_hostname }}"
+        validate_certs: false
+        vmid: "{{ item.vmid }}"
+        state: stopped
+      loop: "{{ lxcs_on_host.proxmox_vms }}"
+      when: >
+        (item.tags is defined) and
+        ('immobile' in (item.tags | regex_findall('[^,;]+')))
+
+- name: Migrate LXCs
+  block:
+    - name: Migrate LXC containers manually
+      delegate_to: localhost
+      community.general.proxmox_api:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ inventory_hostname }}"
+        validate_certs: false
+        endpoint: "nodes/{{ inventory_hostname }}/lxc/{{ item.vmid }}/migrate"
+        method: POST
+        data:
+          target: "{{ best_node }}"
+          online: "{{ item.status == 'running' }}"
+      loop: "{{ vms_on_host_lxc.proxmox_vms }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: >
+        (item.tags is not defined) or
+        ('immobile' not in (item.tags | regex_findall('[^,;]+')))
+
 - name: Get list of VMs
   delegate_to: localhost
   community.general.proxmox_vm_info:
@@ -9,6 +62,7 @@
     validate_certs: false
     type: qemu
   register: vms_on_host
+  failed_when: true # fail here for testing
 
 - name: Debug vms_on_host
   delegate_to: localhost
@@ -30,6 +84,7 @@
       when: >
         (item.tags is defined) and
         ('immobile' in (item.tags | regex_findall('[^,;]+')))
+
 - name: Migrate mobile VMs
   block:
     - name: Gather fresh node info
@@ -77,4 +132,4 @@
         label: "{{ item.name }}"
       when: >
         (item.tags is not defined) or
-        ('immobile' not in item.tags | regex_findall('[^,]+'))
+        ('immobile' in (item.tags | regex_findall('[^,;]+')))

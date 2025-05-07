@@ -62,27 +62,18 @@
       ansible.builtin.debug:
         msg: "The best node is : {{ best_node }}"
 
-    - name: Migrate LXC container manually
-      delegate_to: localhost
-      uri:
-        url: "https://{{ inventory_hostname }}:8006/api2/json/nodes/{{ inventory_hostname }}/lxc/{{ item.vmid }}/migrate"
-        method: POST
-        user: "{{ proxmox.api_user }}"
-        password: "{{ proxmox.api_password }}"
-        force_basic_auth: true
-        validate_certs: false
-        body_format: json
-        body:
-          target: "{{ best_node }}"
-          online: "{{ item.status == 'running' }}"
-        status_code: 200
-      loop: "{{ lxcs_on_host.proxmox_vms }}"
+    - name: Migrate LXC containers manually with pct
+      shell: >
+        pct migrate {{ item.vmid }} {{ best_node }} --online
+      args:
+        executable: /bin/bash
+      loop: "{{ vms_on_host_lxc.proxmox_vms }}"
       loop_control:
         label: "{{ item.name }}"
+      changed_when: false
       when: >
         (item.tags is not defined) or
         ('immobile' not in (item.tags | regex_findall('[^,;]+')))
-
 
 - name: Get list of VMs
   delegate_to: localhost

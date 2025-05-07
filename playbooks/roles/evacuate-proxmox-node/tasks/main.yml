@@ -76,7 +76,7 @@
           target: "{{ best_node }}"
           online: "{{ item.status == 'running' }}"
         status_code: 200
-      loop: "{{ vms_on_host_lxc.proxmox_vms }}"
+      loop: "{{ lxcs_on_host.proxmox_vms }}"
       loop_control:
         label: "{{ item.name }}"
       when: >

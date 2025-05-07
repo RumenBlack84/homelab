@@ -41,18 +41,34 @@
       register: running_kernel
       changed_when: false
 
+    - name: Debug running_kernel
+      ansible.builtin.debug:
+        msg: "Checking running_kernel: {{ running_kernel }}"
+
     - name: Get latest installed kernel version
       ansible.builtin.command: ls /usr/lib/modules
       register: installed_kernels
       changed_when: false
 
+    - name: Debug installed_kernels
+      ansible.builtin.debug:
+        msg: "Checking installed_kernels: {{ installed_kernels }}"
+
     - name: Set latest kernel version (sorted)
       ansible.builtin.set_fact:
         latest_kernel: "{{ installed_kernels.stdout_lines | sort(reverse=true) | first }}"
 
+    - name: Debug latest_kernel
+      ansible.builtin.debug:
+        msg: "Checking latest_kernel: {{ latest_kernel }}"
+
     - name: Determine if new kernel is installed
       ansible.builtin.set_fact:
         new_kernel_installed: "{{ running_kernel.stdout != latest_kernel }}"
+
+    - name: Debug latest_kernel
+      ansible.builtin.debug:
+        msg: "Checking new_kernel_installed: {{ new_kernel_installed }}"
 
     - name: Evict Linstor Resources
       ansible.builtin.include_role:

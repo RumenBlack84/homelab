@@ -30,6 +30,24 @@
         (item.tags is defined) and
         ('immobile' in (item.tags | regex_findall('[^,;]+')))
 
+  rescue:
+    - name: Force shutdown of immobile LXCs
+      delegate_to: localhost
+      community.general.proxmox:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ inventory_hostname }}"
+        validate_certs: false
+        vmid: "{{ item.vmid }}"
+        state: stopped
+        force: true
+      loop: "{{ lxcs_on_host.proxmox_vms }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: >
+        (item.tags is defined) and
+        ('immobile' in (item.tags | regex_findall('[^,;]+')))
+
 - name: Migrate LXCs
   block:
     - name: Gather fresh node info
@@ -103,6 +121,24 @@
         vmid: "{{ item.vmid }}"
         state: stopped
       loop: "{{ vms_on_host.proxmox_vms }}"
+      when: >
+        (item.tags is defined) and
+        ('immobile' in (item.tags | regex_findall('[^,;]+')))
+
+  rescue:
+    - name: Force shutdown of immobile VMs
+      delegate_to: localhost
+      community.general.proxmox_kvm:
+        api_user: "{{ proxmox.api_user }}"
+        api_password: "{{ proxmox.api_password }}"
+        api_host: "{{ inventory_hostname }}"
+        validate_certs: false
+        vmid: "{{ item.vmid }}"
+        state: stopped
+        force: true
+      loop: "{{ vms_on_host.proxmox_vms }}"
+      loop_control:
+        label: "{{ item.name }}"
       when: >
         (item.tags is defined) and
         ('immobile' in (item.tags | regex_findall('[^,;]+')))

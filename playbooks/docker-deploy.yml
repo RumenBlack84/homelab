@@ -25,7 +25,7 @@
         name: docker
       when: (hostvars[inventory_hostname].docker_enabled | default(false) | bool)
 
-    - name: Run the arch-update role to update and prep arch based systems
+    - name: Install oh my posh for arch
       ansible.builtin.include_role:
         name: oh-my-posh-arch
       when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"

@@ -68,6 +68,14 @@
     groups: docker
     append: true
 
+- name: Ensure the appdata dir exists
+  ansible.builtin.file:
+    path: "/appdata"
+    state: directory
+    owner: "{{ hostvars[inventory_hostname].ansible_user }}"
+    group: "{{ hostvars[inventory_hostname].ansible_user }}"
+    mode: '0755'
+
 - name: Ensure the docker-compose directories exists
   ansible.builtin.file:
     path: "/home/{{ hostvars[inventory_hostname].ansible_user }}/docker-compose/{{ item.key }}"
@@ -91,12 +99,47 @@
 - name: Generate env files for each stack
   ansible.builtin.template:
     src: "docker-compose/{{ item.key }}/.env"
-    dest: "/home/{{ hostvars[inventory_hostname].ansible_user }}/docker-compose/{{ item.key }}/.env"
+    dest: "/appdata/traefik/traefik.yml"
     owner: "{{ hostvars[inventory_hostname].ansible_user }}"
     group: "{{ hostvars[inventory_hostname].ansible_user }}"
     mode: "0600"
   loop: "{{ hostvars[inventory_hostname].docker_stacks | dict2items }}"
   when: item.value  # Only process stacks that are `true`
+
+- name: Extra Traefik configs
+  when: hostvars[inventory_hostname].docker_stacks.traefik
+  block:
+    - name: Ensure the Traefik appdata dir exists
+      ansible.builtin.file:
+        path: "/appdata/traefik"
+        state: directory
+        owner: "{{ hostvars[inventory_hostname].ansible_user }}"
+        group: "{{ hostvars[inventory_hostname].ansible_user }}"
+        mode: '0755'
+
+    - name: Include traefik.yml
+      ansible.builtin.template:
+        src: "docker-compose/traefik/traefik.yml"
+        dest: "/appdata/traefik/traefik.yml"
+        owner: "root"
+        group: "docker"
+        mode: "0755"
+
+    - name: Touch acme
+      ansible.builtin.file:
+        path: /appdata/traefik/acme.json
+        state: touch
+        owner: "root"
+        group: "docker"
+        mode: "0600"
+
+    - name: Include traefik config
+      ansible.builtin.template:
+        src: "docker-compose/traefik/config.yml"
+        dest: "/appdata/traefik/config.yml"
+        owner: "root"
+        group: "docker"
+        mode: "0755"
 
 - name: Stop the docker stacks with Docker Compose v2
   community.docker.docker_compose_v2:

@@ -117,7 +117,7 @@
     cpuunits: "{{ hostvars[inventory_hostname].cpuunits | default(100) | int }}"
     tags: "{{ hostvars[inventory_hostname].proxmox_tags | default([]) }}"
     sshkeys: "{{ ssh.pub_key }}"
-    memory: "{{ hostvars[inventory_hostname].memory }}"
+    memory: "{{ hostvars[inventory_hostname].memory | default(omit) }}"
     sockets: "{{ hostvars[inventory_hostname].sockets | default(omit) }}"
     cores: "{{ hostvars[inventory_hostname].cores | default(omit) }}"
     vcpus: "{{ hostvars[inventory_hostname].vcpus | default(omit) }}"

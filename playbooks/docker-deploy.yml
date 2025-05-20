@@ -19,12 +19,15 @@
         name: deploy-proxmox-container
       when: (hostvars[inventory_hostname].lxc | default(false) | bool)
 
-    - name: Run docker role
-      ansible.builtin.include_role:
-        name: docker
-      when: (hostvars[inventory_hostname].docker_enabled | default(false) | bool)
+    - name: Become block
+      become: true
+      block:
+        - name: Run docker role
+          ansible.builtin.include_role:
+            name: docker
+          when: (hostvars[inventory_hostname].docker_enabled | default(false) | bool)
 
-    - name: Install oh my posh for arch
-      ansible.builtin.include_role:
-        name: oh-my-posh-arch
-      when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"
+        - name: Install oh my posh for arch
+          ansible.builtin.include_role:
+            name: oh-my-posh-arch
+          when: (hostvars[inventory_hostname].ostype | default('')) == "archlinux"

@@ -141,6 +141,10 @@
         group: "docker"
         mode: "0755"
 
+    - name: Create a network
+      community.docker.docker_network:
+        name: proxy
+
 - name: Stop the docker stacks with Docker Compose v2
   community.docker.docker_compose_v2:
     project_src: "/home/{{ hostvars[inventory_hostname].ansible_user }}/docker-compose/{{ item.key }}"

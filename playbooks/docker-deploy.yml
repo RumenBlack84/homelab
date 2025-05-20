@@ -14,7 +14,7 @@
       ansible.builtin.include_role:
         name: deploy-proxmox-vm
       when: (hostvars[inventory_hostname].vm | default(false) | bool)
-      remote_user: root
+      become: false
 
     - name: Run deploy-proxmox-container to ensure the required LXC exists
       ansible.builtin.include_role:

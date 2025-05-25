@@ -3,9 +3,19 @@ services:
   uptime-kuma:
     image: louislam/uptime-kuma
     container_name: uptime-kuma
+    networks:
+      - proxy
     volumes:
       - /appdata/uptime_data:/app/data
-    ports:
-      - 3001:3001  
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime.rule=Host(`uptimekuma.grant.onl`)"
+      - "traefik.http.routers.uptime.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
+      - "traefik.http.routers.uptime.tls.certresolver=cloudflare"
+      - "traefik.http.services.uptime.loadbalancer.server.port=3001"
+networks:
+  proxy:
+    external: true
 

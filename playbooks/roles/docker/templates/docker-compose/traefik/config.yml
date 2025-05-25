@@ -17,7 +17,7 @@ http:
     proxmox:
       loadBalancer:
         servers:
-          - url: "https://192.168.0.4:8006"
+          - url: "https://193.168.0.4:8006"
         passHostHeader: true
 #endregion
   middlewares:

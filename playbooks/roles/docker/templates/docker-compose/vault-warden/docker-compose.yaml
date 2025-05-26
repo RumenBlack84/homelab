@@ -3,13 +3,23 @@ services:
   vaultwarden:
     image: vaultwarden/server:latest
     container_name: vaultwarden
+    networks:
+      - proxy
     environment:
       - UMASK=000
       - TZ=America/Toronto
       - DOMAIN=https://bitwarden.grant.onl
     volumes:
       - /appdata/vault-warden_data:/data
-    ports:
-      - 4743:80
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bitwarden.rule=Host(`bitwarden.grant.onl`)"
+      - "traefik.http.routers.bitwarden.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
+      - "traefik.http.routers.bitwarden.tls.certresolver=cloudflare"
+      - "traefik.http.services.bitwarden.loadbalancer.server.port=80"
+networks:
+  proxy:
+    external: true
 

@@ -9,14 +9,21 @@ services:
       - /appdata/radarr_data:/config
       - media:/Media
       - downloads:/Downloads
-    ports:
-      - 7878:7878
+    networks:
+      - proxy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.grant.onl`)"
+      - "traefik.http.routers.radarr.entrypoints=https"
+      - "traefik.http.routers.radarr.tls.certresolver=cloudflare"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+
   sonarr:
     container_name: sonarr
     image: hotio/sonarr:latest
-    ports:
-      - "8989:8989"
+    networks:
+      - proxy
     environment:
       - UMASK=000
     volumes:
@@ -24,16 +31,13 @@ services:
       - media:/Media
       - downloads:/Downloads
     restart: unless-stopped
-  ombi:
-    image: linuxserver/ombi:latest
-    container_name: ombi
-    environment:
-      - BASE_URL=/ombi
-    volumes:
-      - /appdata/ombi_data:/config
-    ports:
-      - 3579:3579
-    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.grant.onl`)"
+      - "traefik.http.routers.sonarr.entrypoints=https"
+      - "traefik.http.routers.sonarr.tls.certresolver=cloudflare"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+
   maintainerr:
     image: jorenn92/maintainerr:latest
     container_name: maintainerr
@@ -41,9 +45,16 @@ services:
       - /appdata/maintainerr_data:/opt/data
     environment:
       - TZ=America/Chicago
-    ports:
-      - 6246:6246
+    networks:
+      - proxy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.maintainerr.rule=Host(`maintainerr.grant.onl`)"
+      - "traefik.http.routers.maintainerr.entrypoints=https"
+      - "traefik.http.routers.maintainerr.tls.certresolver=cloudflare"
+      - "traefik.http.services.maintainerr.loadbalancer.server.port=6246"
+
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
@@ -52,17 +63,31 @@ services:
     volumes:
       - /appdata/bazarr_data:/config
       - media:/Media
-    ports:
-      - 6767:6767
+    networks:
+      - proxy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bazarr.rule=Host(`bazarr.grant.onl`)"
+      - "traefik.http.routers.bazarr.entrypoints=https"
+      - "traefik.http.routers.bazarr.tls.certresolver=cloudflare"
+      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
+
   autoscan:
     container_name: autoscan
     image: hotio/autoscan:latest
-    ports:
-      - "3030:3030"
+    networks:
+      - proxy
     volumes:
       - /appdata/autoscan_data:/config
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.autoscan.rule=Host(`autoscan.grant.onl`)"
+      - "traefik.http.routers.autoscan.entrypoints=https"
+      - "traefik.http.routers.autoscan.tls.certresolver=cloudflare"
+      - "traefik.http.services.autoscan.loadbalancer.server.port=3030"
+
   tautulli:
     image: tautulli/tautulli:latest
     container_name: tautulli
@@ -70,19 +95,32 @@ services:
     volumes:
       - /appdata/tautulli_data:/config
     environment:
-      - TZ=America/New_York
-    ports:
-      - 8181:8181
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tautulli.rule=Host(`tautulli.grant.onl`)"
+      - "traefik.http.routers.tautulli.entrypoints=https"
+      - "traefik.http.routers.tautulli.tls.certresolver=cloudflare"
+      - "traefik.http.services.tautulli.loadbalancer.server.port=8181"
+
   huntarr:
     image: huntarr/huntarr:latest
     container_name: huntarr
     restart: always
-    ports:
-      - "9705:9705"
+    networks:
+      - proxy
     volumes:
       - /appdata/huntarr_data:/config
     environment:
       - TZ=America/New_York
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.huntarr.rule=Host(`huntarr.grant.onl`)"
+      - "traefik.http.routers.huntarr.entrypoints=https"
+      - "traefik.http.routers.huntarr.tls.certresolver=cloudflare"
+      - "traefik.http.services.huntarr.loadbalancer.server.port=9705"
+
 volumes:
   media:
     driver: local
@@ -96,3 +134,6 @@ volumes:
       type: nfs
       o: "addr=192.168.0.78,rw,vers=4.2,nconnect=4,rsize=1048576,wsize=1048576,timeo=600,retrans=2"
       device: ":/exports/downloads"
+networks:
+  proxy:
+    external: true

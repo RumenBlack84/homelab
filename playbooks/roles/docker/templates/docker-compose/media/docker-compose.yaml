@@ -95,6 +95,7 @@ services:
     volumes:
       - /appdata/tautulli_data:/config
     environment:
+      - TZ=America/New_York
     networks:
       - proxy
     labels:

@@ -11,7 +11,6 @@ services:
     ports:
       - 49893:49893 # This is for the qBittorrent WebUI
       - 8080:8080 # This is for the Sabnzb Webui
-      - 9117:9117 # This is for the Jackett Webui
       - 9696:9696 # This is for the Prowlarr Webui
       - 6881:6881 # Listening port for TCP
       - 6881:6881/udp # Listening port for UDP
@@ -36,6 +35,26 @@ services:
       - 192.168.0.1  # Local DNS
     dns_search:
       - grant.onl  # Resolve *.grant.onl locally
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # qBittorrent
+      - "traefik.http.routers.qb.rule=Host(`qbittorrent.grant.onl`)"
+      - "traefik.http.routers.qb.entrypoints=https"
+      - "traefik.http.routers.qb.tls.certresolver=cloudflare"
+      - "traefik.http.services.qb.loadbalancer.server.port=49893"
+      # sabnzbd
+      - "traefik.http.routers.sab.rule=Host(`sabnzbd.grant.onl`)"
+      - "traefik.http.routers.sab.entrypoints=https"
+      - "traefik.http.routers.sab.tls.certresolver=cloudflare"
+      - "traefik.http.services.sab.loadbalancer.server.port=8080"
+      # prowlarr
+      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.grant.onl`)"
+      - "traefik.http.routers.prowlarr.entrypoints=https"
+      - "traefik.http.routers.prowlarr.tls.certresolver=cloudflare"
+      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
+
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     pull_policy: always

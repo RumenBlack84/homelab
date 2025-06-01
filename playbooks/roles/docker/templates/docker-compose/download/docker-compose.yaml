@@ -46,19 +46,22 @@ services:
       # qBittorrent
       - "traefik.http.routers.qb.rule=Host(`qbittorrent.grant.onl`)"
       - "traefik.http.routers.qb.entrypoints=https"
-      - "traefik.http.routers.qb.middlewares=default-whitelist"
+      - "traefik.http.routers.qb.middlewares=default-whitelist@file,default-headers@file"
+      - "traefik.http.routers.qb.service=qb"
       - "traefik.http.routers.qb.tls.certresolver=cloudflare"
       - "traefik.http.services.qb.loadbalancer.server.port=49893"
       # sabnzbd
       - "traefik.http.routers.sab.rule=Host(`sabnzbd.grant.onl`)"
       - "traefik.http.routers.sab.entrypoints=https"
-      - "traefik.http.routers.sab.middlewares=default-whitelist"
+      - "traefik.http.routers.sab.middlewares=default-whitelist@file,default-headers@file"
+      - "traefik.http.routers.sab.service=sab" 
       - "traefik.http.routers.sab.tls.certresolver=cloudflare"
       - "traefik.http.services.sab.loadbalancer.server.port=8080"
       # prowlarr
       - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.grant.onl`)"
       - "traefik.http.routers.prowlarr.entrypoints=https"
-      - "traefik.http.routers.prowlarr.middlewares=default-whitelist"
+      - "traefik.http.routers.prowlarr.middlewares=default-whitelist@file,default-headers@file"
+      - "traefik.http.routers.prowlarr.service=prowlarr" 
       - "traefik.http.routers.prowlarr.tls.certresolver=cloudflare"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 

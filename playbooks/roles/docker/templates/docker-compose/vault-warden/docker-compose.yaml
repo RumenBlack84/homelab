@@ -16,7 +16,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.bitwarden.rule=Host(`bitwarden.grant.onl`)"
       - "traefik.http.routers.bitwarden.entrypoints=https"
-      - "traefik.http.routers.bitwarden.middlewares=default-whitelist"
+      - "traefik.http.routers.bitwarden.middlewares=default-whitelist@file,default-headers@file"
       - "traefik.http.routers.bitwarden.tls.certresolver=cloudflare"
       - "traefik.http.services.bitwarden.loadbalancer.server.port=80"
 networks:

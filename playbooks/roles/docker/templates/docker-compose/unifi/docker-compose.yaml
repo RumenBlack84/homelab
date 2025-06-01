@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
 networks:
-  # proxy-network: # optional, Use this network or your own if you intend to configure the unifi-network-application container through a revers proxy, otherwise not needed.
-    # external: true
+  proxy: 
+    external: true
   unifi:
 services:
   unifi-mongo:
@@ -42,17 +42,18 @@ services:
     volumes:
       - /appdata/unifi/unifi_data:/config
     ports:
-      - 8443:8443
       - 3478:3478/udp
       - 10001:10001/udp
       - 8080:8080
       - 1900:1900/udp                                       # optional
-      # - 8843:8843                                         # optional
-      # - 8880:8880                                         # optional
-      - 6789:6789                                           # optional
-      - 5514:5514/udp                                       # optional
     networks:
-      # proxy-network: # optional, Use this network or our own if you intend to configure the unifi-network-application container through a revers proxy, otherwise not needed.
+      proxy:
       unifi:
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.unifi.rule=Host(`unifi.grant.onl`)"
+      - "traefik.http.routers.unifi.entrypoints=https"
+      - "traefik.http.routers.unifi.tls.certresolver=cloudflare"
+      - "traefik.http.services.unifi.loadbalancer.server.port=8443"
 

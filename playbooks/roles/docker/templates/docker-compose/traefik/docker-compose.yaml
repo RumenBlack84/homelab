@@ -9,9 +9,7 @@ services:
       - proxy
     ports:
       - 80:80
-      - 81:81
       - 443:443
-      - 444:444
     environment:
       CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
       TRAEFIK_DASHBOARD_CREDENTIALS: ${TRAEFIK_DASHBOARD_CREDENTIALS}

@@ -9,9 +9,9 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     ports:
-      - 49893:49893 # This is for the qBittorrent WebUI
-      - 8080:8080 # This is for the Sabnzb Webui
-      - 9696:9696 # This is for the Prowlarr Webui
+#      - 49893:49893 # This is for the qBittorrent WebUI
+#      - 8080:8080 # This is for the Sabnzb Webui
+#      - 9696:9696 # This is for the Prowlarr Webui
       - 6881:6881 # Listening port for TCP
       - 6881:6881/udp # Listening port for UDP
     environment:

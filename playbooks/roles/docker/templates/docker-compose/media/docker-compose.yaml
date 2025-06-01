@@ -16,6 +16,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.radarr.rule=Host(`radarr.grant.onl`)"
       - "traefik.http.routers.radarr.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.radarr.tls.certresolver=cloudflare"
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
 
@@ -35,6 +36,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.sonarr.rule=Host(`sonarr.grant.onl`)"
       - "traefik.http.routers.sonarr.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.sonarr.tls.certresolver=cloudflare"
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
 
@@ -52,6 +54,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.maintainerr.rule=Host(`maintainerr.grant.onl`)"
       - "traefik.http.routers.maintainerr.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.maintainerr.tls.certresolver=cloudflare"
       - "traefik.http.services.maintainerr.loadbalancer.server.port=6246"
 
@@ -70,6 +73,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.bazarr.rule=Host(`bazarr.grant.onl`)"
       - "traefik.http.routers.bazarr.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.bazarr.tls.certresolver=cloudflare"
       - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
 
@@ -85,6 +89,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.autoscan.rule=Host(`autoscan.grant.onl`)"
       - "traefik.http.routers.autoscan.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.autoscan.tls.certresolver=cloudflare"
       - "traefik.http.services.autoscan.loadbalancer.server.port=3030"
 
@@ -102,6 +107,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.tautulli.rule=Host(`tautulli.grant.onl`)"
       - "traefik.http.routers.tautulli.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.tautulli.tls.certresolver=cloudflare"
       - "traefik.http.services.tautulli.loadbalancer.server.port=8181"
 
@@ -119,6 +125,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.huntarr.rule=Host(`huntarr.grant.onl`)"
       - "traefik.http.routers.huntarr.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.huntarr.tls.certresolver=cloudflare"
       - "traefik.http.services.huntarr.loadbalancer.server.port=9705"
 

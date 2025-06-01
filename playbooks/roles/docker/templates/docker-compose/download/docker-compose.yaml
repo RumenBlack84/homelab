@@ -42,16 +42,19 @@ services:
       # qBittorrent
       - "traefik.http.routers.qb.rule=Host(`qbittorrent.grant.onl`)"
       - "traefik.http.routers.qb.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.qb.tls.certresolver=cloudflare"
       - "traefik.http.services.qb.loadbalancer.server.port=49893"
       # sabnzbd
       - "traefik.http.routers.sab.rule=Host(`sabnzbd.grant.onl`)"
       - "traefik.http.routers.sab.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.sab.tls.certresolver=cloudflare"
       - "traefik.http.services.sab.loadbalancer.server.port=8080"
       # prowlarr
       - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.grant.onl`)"
       - "traefik.http.routers.prowlarr.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.prowlarr.tls.certresolver=cloudflare"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 
@@ -112,3 +115,6 @@ volumes:
       type: nfs
       o: "addr=192.168.0.78,rw,vers=4.2,nconnect=4,rsize=1048576,wsize=1048576,timeo=600,retrans=2"
       device: ":/exports/downloads"
+networks:
+  proxy:
+    external: true

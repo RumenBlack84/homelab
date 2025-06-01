@@ -54,6 +54,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.unifi.rule=Host(`unifi.grant.onl`)"
       - "traefik.http.routers.unifi.entrypoints=https"
+      - "traefik.http.routers.secure.middlewares=default-whitelist"
       - "traefik.http.routers.unifi.tls.certresolver=cloudflare"
       - "traefik.http.services.unifi.loadbalancer.server.port=8443"
 

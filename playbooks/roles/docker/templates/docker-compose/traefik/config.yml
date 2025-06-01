@@ -8,16 +8,105 @@ http:
       middlewares:
         - default-headers
         - https-redirectscheme
+        - default-whitelist
       tls: {}
       service: proxmox
-  
+    blueiris:
+      entryPoints:
+        - "https"
+      rule: "Host(`blueiris.grant.onl`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+        - default-whitelist
+      tls: {}
+      service: blueiris
+    tdarr:
+      entryPoints:
+        - "https"
+      rule: "Host(`tdarr.grant.onl`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+        - default-whitelist
+      tls: {}
+      service: tdarr
+    home:
+      entryPoints:
+        - "https"
+      rule: "Host(`home.grant.onl`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+        - default-whitelist
+      tls: {}
+      service: homeassistant
+    checkmk:
+      entryPoints:
+        - "https"
+      rule: "Host(`checkmk.grant.onl`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+        - default-whitelist
+      tls: {}
+      service: checkmk
+    plex:
+      entryPoints:
+        - "https"
+      rule: "Host(`plex.grant.onl`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: plex
+    semaphore:
+      entryPoints:
+        - "https"
+      rule: "Host(`semaphore.grant.onl`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+        - default-whitelist
+      tls: {}
+      service: semaphore
 #endregion
 #region services
   services:
     proxmox:
       loadBalancer:
         servers:
-          - url: "https://193.168.0.4:8006"
+          - url: "https://192.168.0.4:8006"
+        passHostHeader: true
+    blueiris:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.30:81"
+        passHostHeader: true
+    tdarr:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.80:8265"
+        passHostHeader: true
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.31:8123"
+        passHostHeader: true
+    checkmk:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.68:80"
+        passHostHeader: true
+    plex:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.74:32400"
+        passHostHeader: true
+    semaphore:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.20:3000"
         passHostHeader: true
 #endregion
   middlewares:

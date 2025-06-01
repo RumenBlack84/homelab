@@ -14,6 +14,10 @@ services:
 #      - 9696:9696 # This is for the Prowlarr Webui
       - 6881:6881 # Listening port for TCP
       - 6881:6881/udp # Listening port for UDP
+    expose:
+      - 49893 # This is for the qBittorrent WebUI
+      - 8080 # This is for the Sabnzb Webui
+      - 9696 # This is for the Prowlarr Webui
     environment:
       - VPN_SERVICE_PROVIDER=protonvpn
       - OPENVPN_USER={{ docker.protonvpn_username }} # REPLACE these with your OpenVPN credentials. Use +pmp after your username to use port forwarding
@@ -42,19 +46,19 @@ services:
       # qBittorrent
       - "traefik.http.routers.qb.rule=Host(`qbittorrent.grant.onl`)"
       - "traefik.http.routers.qb.entrypoints=https"
-      - "traefik.http.routers.secure.middlewares=default-whitelist"
+      - "traefik.http.routers.qb.middlewares=default-whitelist"
       - "traefik.http.routers.qb.tls.certresolver=cloudflare"
       - "traefik.http.services.qb.loadbalancer.server.port=49893"
       # sabnzbd
       - "traefik.http.routers.sab.rule=Host(`sabnzbd.grant.onl`)"
       - "traefik.http.routers.sab.entrypoints=https"
-      - "traefik.http.routers.secure.middlewares=default-whitelist"
+      - "traefik.http.routers.sab.middlewares=default-whitelist"
       - "traefik.http.routers.sab.tls.certresolver=cloudflare"
       - "traefik.http.services.sab.loadbalancer.server.port=8080"
       # prowlarr
       - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.grant.onl`)"
       - "traefik.http.routers.prowlarr.entrypoints=https"
-      - "traefik.http.routers.secure.middlewares=default-whitelist"
+      - "traefik.http.routers.prowlarr.middlewares=default-whitelist"
       - "traefik.http.routers.prowlarr.tls.certresolver=cloudflare"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 

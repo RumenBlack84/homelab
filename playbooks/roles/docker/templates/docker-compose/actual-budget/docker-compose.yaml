@@ -11,7 +11,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.actual-budget.rule=Host(`budget.grant.onl`)"
       - "traefik.http.routers.actual-budget.entrypoints=https"
-      - "traefik.http.routers.secure.middlewares=default-whitelist"
+      - "traefik.http.routers.actual-budget.middlewares=default-whitelist"
       - "traefik.http.routers.actual-budget.tls.certresolver=cloudflare"
       - "traefik.http.services.actual-budget.loadbalancer.server.port=5006"
 networks:

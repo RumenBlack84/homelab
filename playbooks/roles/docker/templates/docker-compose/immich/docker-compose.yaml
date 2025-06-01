@@ -33,7 +33,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.immich.rule=Host(`immich.grant.onl`)"
       - "traefik.http.routers.immich.entrypoints=https"
-      - "traefik.http.routers.secure.middlewares=default-whitelist"
+      - "traefik.http.routers.immich.middlewares=default-whitelist"
       - "traefik.http.routers.immich.tls.certresolver=cloudflare"
       - "traefik.http.services.immich.loadbalancer.server.port=2283"
 

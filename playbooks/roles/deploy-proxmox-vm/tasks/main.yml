@@ -115,7 +115,7 @@
     name: "{{ hostvars[inventory_hostname].inventory_hostname }}"
     node: "{{ proxmox_node }}"
     cpuunits: "{{ hostvars[inventory_hostname].cpuunits | default(100) | int }}"
-    tags: "{{ hostvars[inventory_hostname].proxmox_tags | default([]) }}"
+    tags: "{{ hostvars[inventory_hostname].proxmox_tags | default(omit) }}"
     sshkeys: "{{ ssh.pub_key }}"
     memory: "{{ hostvars[inventory_hostname].memory | default(omit) }}"
     sockets: "{{ hostvars[inventory_hostname].sockets | default(omit) }}"

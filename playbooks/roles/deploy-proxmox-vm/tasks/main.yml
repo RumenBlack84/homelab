@@ -1,4 +1,9 @@
 ---
+- name: Debug inventory_hostname
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: "inventory_hostname : {{ hostvars[inventory_hostname].inventory_hostname }}"
+
 - name: Check if VM exists first
   delegate_to: localhost
   community.general.proxmox_vm_info:

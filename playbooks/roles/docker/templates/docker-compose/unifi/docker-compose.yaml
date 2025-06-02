@@ -57,4 +57,5 @@ services:
       - "traefik.http.routers.unifi.middlewares=default-whitelist@file,default-headers@file"
       - "traefik.http.routers.unifi.tls.certresolver=cloudflare"
       - "traefik.http.services.unifi.loadbalancer.server.port=8443"
+      - "traefik.http.services.unifi.loadbalancer.server.scheme=https"
 

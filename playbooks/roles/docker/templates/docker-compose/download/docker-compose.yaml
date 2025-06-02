@@ -51,7 +51,7 @@ services:
       - "traefik.http.routers.qb.tls.certresolver=cloudflare"
       - "traefik.http.services.qb.loadbalancer.server.port=49893"
       # sabnzbd
-      - "traefik.http.routers.sab.rule=Host(`sabnzbd.grant.onl`)"
+      - "traefik.http.routers.sab.rule=Host(`sabnzb.grant.onl`)"
       - "traefik.http.routers.sab.entrypoints=https"
       - "traefik.http.routers.sab.middlewares=default-whitelist@file,default-headers@file"
       - "traefik.http.routers.sab.service=sab" 

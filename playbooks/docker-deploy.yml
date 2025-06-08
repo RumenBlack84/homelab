@@ -1,6 +1,6 @@
 ---
 - name: Deploy docker
-  hosts: Orca # just for now to deploy new docker only
+  hosts: Pikvm # just for now to deploy new docker only
   gather_facts: false
   remote_user: "{{ hostvars[inventory_hostname].ansible_user }}"
   vars_files:

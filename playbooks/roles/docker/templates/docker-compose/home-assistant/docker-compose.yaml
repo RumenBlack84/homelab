@@ -1,0 +1,32 @@
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - /appdata/home-assistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    devices:
+      - /dev/serial/by-id/usb-dresden_elektronik_ingenieurtechnik_GmbH_ConBee_II_DE2463123-if00:/dev/serial/by-id/usb-dresden_elektronik_ingenieurtechnik_GmbH_ConBee_II_DE2463123-if00
+  zwave-js-ui:
+    container_name: zwave-js-ui
+    image: zwavejs/zwave-js-ui:latest
+    restart: unless-stopped
+    tty: true
+    network_mode: host
+    stop_signal: SIGINT
+    environment:
+      - SESSION_SECRET=${zwave_secret}
+      - TZ=America/New_York
+    devices:
+      - /dev/serial/by-id/usb-Zooz_800_Z-wave_Stick_533D004242-if00:/dev/serial/by-id/usb-Zooz_800_Z-wave_Stick_533D004242-if00
+    volumes:
+      - /appdata/zwave-config:/usr/src/app/store
+# Not needed if running host networking left for reference
+#    ports:
+#      - '8091:8091' # port for web interface
+#      - '3000:3000' # port for Z-Wave JS websocket server
+

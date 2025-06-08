@@ -22,7 +22,7 @@ services:
       - SESSION_SECRET=${zwave_secret}
       - TZ=America/New_York
     devices:
-      - /dev/serial/by-id/usb-Zooz_800_Z-wave_Stick_533D004242-if00:/dev/serial/by-id/usb-Zooz_800_Z-wave_Stick_533D004242-if00
+      - /dev/serial/by-id/usb-Zooz_800_Z-Wave_Stick_533D004242-if00:/dev/serial/by-id/usb-Zooz_800_Z-Wave_Stick_533D004242-if00
     volumes:
       - /appdata/zwave-config:/usr/src/app/store
 # Not needed if running host networking left for reference

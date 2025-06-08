@@ -107,7 +107,7 @@
   when: item.value  # Only process stacks that are `true`
 
 - name: Extra Traefik configs
-  when: hostvars[inventory_hostname].docker_stacks.traefik
+  when: ( hostvars[inventory_hostname].docker_stacks.traefik | default(false | bool )
   block:
     - name: Ensure the Traefik appdata dir exists
       ansible.builtin.file:

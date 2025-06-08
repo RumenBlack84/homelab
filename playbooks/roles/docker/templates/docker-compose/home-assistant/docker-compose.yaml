@@ -10,15 +10,8 @@ services:
     privileged: true
     network_mode: host
     devices:
-      # relies on udev rule on host
-      # /etc/udev/rules.d/99-usb-serial.rules
-      # SUBSYSTEM=="tty",
-      # KERNEL=="ttyACM[0-9]*",
-      # ATTRS{product}=="ConBee II",
-      # ATTRS{serial}=="DE2463123",
-      # ATTRS{manufacturer}=="dresden elektronik ingenieurtechnik GmbH",
-      # SYMLINK+="ttyZigbeeRadio"
-      - /dev/ttyZigbeeRadio:/dev/ttyZigbeeRadio
+      # Map ConBee II by-id → /dev/ttyZigbeeRadio
+      - /dev/serial/by-id/usb-dresden_elektronik_ingenieurtechnik_GmbH_ConBee_II_DE2463123-if00:/dev/ttyZigbeeRadio
   zwave-js-ui:
     container_name: zwave-js-ui
     image: zwavejs/zwave-js-ui:latest
@@ -30,15 +23,8 @@ services:
       - SESSION_SECRET=${zwave_secret}
       - TZ=America/New_York
     devices:
-      # relies on udev rule on host
-      # /etc/udev/rules.d/99-usb-serial.rules
-      # SUBSYSTEM=="tty",
-      # KERNEL=="ttyACM[0-9]*",
-      # ATTRS{manufacturer}=="Zooz"
-      # ATTRS{product}=="800 Z-Wave Stick"
-      # ATTRS{serial}=="533D004242"
-      # SYMLINK+="ttyZwaveRadio"
-      - /dev/ttyZwaveRadio:/dev/ttyZwaveRadio
+      # Map Z-Wave stick by-id → /dev/ttyZwaveRadio
+      - /dev/serial/by-id/usb-Zooz_800_Z-Wave_Stick_533D004242-if00:/dev/ttyZwaveRadio
     volumes:
       - /appdata/zwave-config:/usr/src/app/store
 # Not needed if running host networking left for reference

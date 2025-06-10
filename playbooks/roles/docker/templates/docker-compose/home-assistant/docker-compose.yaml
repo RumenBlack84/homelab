@@ -31,4 +31,20 @@ services:
 #    ports:
 #      - '8091:8091' # port for web interface
 #      - '3000:3000' # port for Z-Wave JS websocket server
-
+  homebridge:
+    image: homebridge/homebridge:latest
+    restart: always
+    network_mode: host
+    volumes:
+      - /appdata/homebridge:/homebridge
+    logging:
+      driver: json-file
+      options:
+        max-size: "10mb"
+        max-file: "1"
+    healthcheck:
+      test: curl --fail localhost:8581 || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 300s
+      timeout: 2s
